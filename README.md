@@ -6,7 +6,9 @@ assets and W3X maps directly — no Blender/GLB pipeline, no game engine shortcu
 Current state (see `docs/STATUS.md`):
 - Milestone A: animated MDX model viewer with WC3 material/blend semantics — done.
 - Milestone C: static W3X map viewer (terrain + doodads) — core done, cliffs/water pending.
-- YDWE compatibility layer and UI: in progress.
+- JASS runtime: real parser + VM; target YDWE map initialization executes (14 units,
+  228 triggers, 16 timers, 6,437 native calls). Gameplay path still in progress.
+- YDWE compatibility layer, dependency reports and viewer UI: implemented.
 
 ## Requirements
 

@@ -35,6 +35,20 @@
 - YDWE fixture map: MapInfo is skipped (invalid weather id "0000"), 139 of 1,091 doodads
   resolve to no model (custom ids / text MDL).
 
+## JASS runtime
+
+- Target map initialization completes, but gameplay is not runnable yet: timer advancement
+  hits `EXExecuteScript` (Lua `jass.slk` queries) in UI trigger actions.
+- Only 68 of the map's 265 declared extension natives are implemented; missing natives are
+  reported loudly, never stubbed silently. All three extension natives reachable from the
+  static init path are implemented.
+- Trigger event dispatch is limited to initialization triggers and timer expiry; mouse,
+  chat, unit and dialog events are registered but not dispatched.
+- Coroutines/`TriggerSleepAction`, precise handle-type inheritance, and source line numbers
+  are not implemented. Debug blocks are skipped by default.
+- Runtime units/triggers/timers are simulation state only; they are not yet rendered by the
+  client.
+
 ## Compatibility / UI
 
 - YDWE extension natives are inventoried and classified but not implemented; there is no

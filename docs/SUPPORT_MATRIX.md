@@ -36,7 +36,13 @@ Fixture map: `C:/Users/admin/Downloads/Map Tong Hop v49.0 SS2.w3x` (HM3W, protec
 | JASS script for fixture map | Blocked | map is protected (no war3map.j/.lua) |
 | YDWE map (811.ThoiDaiBS) static load | Working | 250 instances, 64 models, 139 unresolved custom |
 | YDWE extension native inventory | Working | 265 declared / 69 called; DzAPI/JAPI/Extra |
-| YDWE native implementations / JASS VM | Not implemented | compatibility layer reports only |
+| JASS parser (War3Net) | Working | common.j + Blizzard.j + map (1.7 MB) parse in ~1.3 s |
+| JASS VM | Working | VM conformance tests; target map `main` executes |
+| Target map initialization | Working | 14 units, 228 triggers, 16 timers, 8 frames, 6,437 native calls |
+| YDWE native implementations | Partial | 68/265 bound; all 3 init-reachable implemented |
+| Timer callbacks | Working (tested) | one-shot + periodic against runtime state |
+| Trigger event dispatch | Partial | registration + init triggers + timer events; gameplay events not dispatched |
+| EXExecuteScript (Lua SLK query) | Missing | blocks timer-driven UI triggers |
 | Text MDL models | Not supported | binary MDX only |
 | CASC / Reforged | Not started | — |
 

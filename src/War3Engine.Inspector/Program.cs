@@ -2,6 +2,7 @@ using System.Numerics;
 using War3Engine.Assets;
 using War3Engine.Core;
 using War3Engine.Compat;
+using War3Engine.Scripting;
 using War3Engine.Core.Models;
 using War3Net.Common.Extensions;
 
@@ -34,6 +35,18 @@ internal static class Program
                     return InspectMap(store, args.ElementAtOrDefault(1) ?? settings.MapPath);
                 case "mapdata":
                     return InspectMapData(args.ElementAtOrDefault(1) ?? settings.MapPath);
+                case "runmap":
+                    return JassRunner.Run(
+                        settings,
+                        store,
+                        args.ElementAtOrDefault(1),
+                        args.ElementAtOrDefault(2) is { } steps ? long.Parse(steps) : 5_000_000,
+                        args.ElementAtOrDefault(3) is { } advance ? int.Parse(advance) : 0,
+                        args.Contains("--trace"));
+                case "mapaudit":
+                    return MapAudit.Run(settings, store, args.ElementAtOrDefault(1), args.ElementAtOrDefault(2) ?? "docs");
+                case "jassparse":
+                    return InspectJassParse(store, args.ElementAtOrDefault(1));
                 case "compat":
                     return InspectCompatibility(settings, store, args.ElementAtOrDefault(1), args.ElementAtOrDefault(2));
                 case "extract":
@@ -64,6 +77,38 @@ internal static class Program
 
             return 1;
         }
+    }
+
+    private static int InspectJassParse(AssetStore store, string? path)
+    {
+        string source;
+        if (path is null)
+        {
+            store.MountMap(EngineSettings.Load().YdweMapPath);
+            var bytes = store.ReadAllBytes("war3map.j", out var sourceName);
+            Console.WriteLine($"reading war3map.j from {sourceName} ({bytes.Length} bytes)");
+            source = System.Text.Encoding.UTF8.GetString(bytes);
+        }
+        else
+        {
+            source = File.ReadAllText(path);
+        }
+
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var ok = JassProgram.TryParse(source, out var program);
+        watch.Stop();
+        Console.WriteLine($"parse ok={ok} elapsed={watch.ElapsedMilliseconds} ms lines={source.Count(c => c == (char)10) + 1}");
+        if (program is not null)
+        {
+            Console.WriteLine($"functions={program.Functions.Count()} natives={program.Natives.Count()} topLevel={program.CompilationUnit.Declarations.Length}");
+            foreach (var function in program.Functions.Take(8))
+            {
+                var parameters = function.FunctionDeclarator.ParameterList;
+                Console.WriteLine($"  fn {function.FunctionDeclarator.IdentifierName.Token.Text} statements={function.Statements.Length} params={parameters.ToString()}");
+            }
+        }
+
+        return ok ? 0 : 1;
     }
 
     private static int InspectCompatibility(EngineSettings settings, AssetStore store, string? mapPath, string? outputPath)
@@ -134,7 +179,7 @@ internal static class Program
         return 0;
     }
 
-    private static List<MapImportStatus> ReadMapImports(AssetStore store)
+    internal static List<MapImportStatus> ReadMapImports(AssetStore store)
     {
         var result = new List<MapImportStatus>();
         if (!store.TryOpen("war3map.imp", out var stream))

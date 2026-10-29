@@ -6,12 +6,15 @@
     <Project Path="src/War3Engine.Core/War3Engine.Core.csproj" />
     <Project Path="src/War3Engine.Inspector/War3Engine.Inspector.csproj" />
     <Project Path="src/War3Engine.Rendering/War3Engine.Rendering.csproj" />
+    <Project Path="src/War3Engine.Scripting/War3Engine.Scripting.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/War3Engine.Tests/War3Engine.Tests.csproj" />
   </Folder>
   <Folder Name="/War3Net-master/" />
   <Folder Name="/War3Net-master/src/">
+    <Project Path="War3Net-master/src/War3Net.CodeAnalysis.Jass/War3Net.CodeAnalysis.Jass.csproj" />
+    <Project Path="War3Net-master/src/War3Net.CodeAnalysis/War3Net.CodeAnalysis.csproj" />
     <Project Path="War3Net-master/src/War3Net.Common/War3Net.Common.csproj" />
     <Project Path="War3Net-master/src/War3Net.Drawing.Blp/War3Net.Drawing.Blp.csproj" />
     <Project Path="War3Net-master/src/War3Net.IO.Compression/War3Net.IO.Compression.csproj" />

@@ -55,6 +55,18 @@ is not installed" warning came from vendored War3Net projects multi-targeting ne
 - `War3Engine.Inspector` commands now include `compat` and `mpq` (nested archive probe).
 - Tests: 32 passing (adds YDWE inventory, classification, component detection).
 
+### JASS runtime (Phase A/B/C/D partial, verified)
+- Real tree-walking JASS VM on War3Net.CodeAnalysis.Jass (parsing/program model/execution/
+  native dispatch separated), common.j + Blizzard.j + war3map.j merged.
+- Target map initialization **executes through the VM**: 14 units, 228 triggers, 16 timers,
+  8 YDWE frames, 6,437 native calls, ~56k VM steps; `main` completes.
+- 68/265 declared extension natives bound; all 3 extension natives reachable from `main`
+  implemented. Missing natives fail with name, signature and call stack.
+- Timer scheduler executes one-shot/periodic callbacks against runtime state (tested).
+- Dependency reports: `docs/target-map-jass-dependencies.md`, `docs/target-map-native-status.json`.
+- Next blocker: advancing timers 3 s reaches `EXExecuteScript` Lua JASS-SLK queries;
+  gameplay scenario not yet complete. Details: `docs/JASS_RUNTIME.md`.
+
 ## Partially working / next
 
 - Terrain: splat masks are rendered per tile (orientation approximate), cliffs are
@@ -62,8 +74,8 @@ is not installed" warning came from vendored War3Net projects multi-targeting ne
   depth coloring or animation.
 - Model runtime: billboard nodes, texture UV animation, ParticleEmitter(2), ribbons,
   global blended-layer sort by priority plane.
-- YDWE: only dependency inventory + togglable provider classification; native functions
-  are not implemented and no JASS VM exists, so the YDWE map does not execute yet.
+- YDWE: extension natives are only partially implemented (68/265 bound); the map initializes
+  but later gameplay/UI trigger paths still hit unimplemented natives (next: EXExecuteScript).
 - Text `.mdl` models are unsupported; custom object art resolves `.mdl` names to `.mdx`.
 - Simulation, audio, fog, campaign, networking: not started.
 

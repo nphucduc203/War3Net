@@ -43,10 +43,15 @@ Units, selection, orders, movement, pathing, combat over the fixed-step simulati
 Overlay UI added in the viewer (model animation browser, live stats, map panel).
 Next: model/map pickers, material/bone inspection panels, diagnostics list.
 
-## E — Scripted map execution
+## E — Scripted map execution (in progress)
 
-JASS parser/VM, natives, triggers, timers; Lua later. Requires a map with an
-accessible script (fixture TBD).
+Done: JASS parser + program model + VM + strict native dispatch; common.j/Blizzard.j loaded;
+target map initialization executes (14 units, 228 triggers, 16 timers, 8 frames, 6,437
+native calls); timer callbacks tested; per-map native dependency reports generated;
+68/265 extension natives bound.
+
+Remaining: native behavior for the gameplay/UI path (next blocker `EXExecuteScript`),
+trigger event dispatch beyond init, coroutines/sleep, then the first full playable scenario.
 
 ## F — Expanded compatibility
 

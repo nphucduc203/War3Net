@@ -1,0 +1,211 @@
+# CURRENT BLOCKER TASK — Implement a Real JASS Runtime and Execute the Target YDWE Map
+
+You are continuing development of the existing Warcraft III-compatible engine written in C#.
+
+The latest audit reports:
+
+- The target YDWE map cannot run because there is no working JASS VM.
+- 69 native functions have been inventoried or registered as stubs but have not been implemented.
+- Cliff/ramp rendering is still approximate.
+- Splat-mask orientation has not been compared pixel-by-pixel with the original client.
+- UI interaction has only been visually inspected through screenshots; real mouse interaction has not been verified.
+- Particle/ribbon/billboard rendering and full gameplay simulation were deferred.
+
+## Objective
+
+Unblock the target YDWE map by implementing a real JASS execution runtime, the native behaviors required for map initialization, and the minimum stateful runtime services needed to execute the map's initialization successfully.
+
+Do not attempt to fix every renderer issue and implement every deferred feature in this task.
+
+Do not declare the target map runnable until it actually executes in the engine.
+
+## Rule 1 — Inspect the existing code before modifying it
+
+Inspect the current workspace, architecture, code, tests, build configuration, target map profile, and all previous progress reports.
+
+Identify:
+
+- The exact target Warcraft III version.
+- The exact target map and its file format.
+- The configured YDWE distribution and relevant extensions.
+- How map scripts and imported script libraries are resolved.
+- Whether the map uses JASS, Lua, or a custom startup/bootstrap convention.
+- Which existing components can be reused.
+- Which components are incomplete, mocked, stubbed, or untested.
+
+Do not repeat completed work. Do not replace working code without a specific reason.
+
+## Rule 2 — Produce a script dependency report
+
+Before implementing the VM, analyze the available script sources and generate:
+
+docs/target-map-jass-dependencies.md
+
+docs/target-map-native-status.json
+
+The report must classify every relevant native function as:
+
+- Implemented with verified behavior.
+- Implemented but not fully verified.
+- Registered stub.
+- Missing.
+- Unresolved or unknown.
+- YDWE-specific extension.
+- Standard Warcraft III native.
+- Helper function defined by the map or a script library.
+
+For each native, record its signature, argument and return types, source location if available, and known state changes or side effects.
+
+Trace calls reachable from the target map's real initialization path. Distinguish startup dependencies from later gameplay dependencies.
+
+Do not assume all 69 natives are equally important. Do not omit a native merely because it is uncommon if the target map calls it during initialization.
+
+Do not assume that all required functions are visible in the main map script. Inspect script libraries, available common.j/Blizzard.j declarations, map imports, and relevant YDWE-provided code.
+
+If scripts are protected or unavailable, record exactly what can and cannot be recovered. Do not fabricate a complete dependency graph.
+
+## Rule 3 — Reuse a suitable JASS parser
+
+Evaluate the existing War3Net dependencies.
+
+In particular, investigate War3Net.CodeAnalysis.Jass as a parser, syntax-tree, and analysis component. Verify its installed package version, API compatibility, license, and ability to parse the actual target script.
+
+Do not treat a JASS parser as a JASS interpreter.
+
+If the existing project has no suitable execution engine, implement a real interpreter over a syntax tree first. Do not build a bytecode compiler merely for appearance or complexity.
+
+Keep parsing, semantic validation, execution, native dispatch, and game-state access as separate components.
+
+## Rule 4 — Implement the JASS execution runtime
+
+At minimum, implement and test the constructs required by the actual target version and script:
+
+- JASS primitive types and handle types.
+- Type declarations and inheritance where applicable.
+- Globals, constant globals, locals, and arrays.
+- Function declarations, parameters, scopes, return values, and call stack.
+- Native declarations and typed native dispatch.
+- Function references and code values.
+- Integer, real, boolean, string, null-handle, and FourCC-related semantics.
+- Assignment, arithmetic, comparison, boolean operators, and function calls.
+- If/elseif/else.
+- Loop and exitwhen.
+- Set, call, and return statements.
+- Correct argument validation, return types, and conversion behavior.
+- Script initialization using the correct lifecycle for the target client version.
+- Timers, triggers, and event scheduling when needed by map initialization.
+
+Build a call-stack-aware diagnostic system. Runtime exceptions must identify the map, function, source location if available, native function, and relevant execution path.
+
+Handle recursion, long-running functions, and loops safely. Provide controlled execution limits for debugging malformed scripts or accidental infinite loops.
+
+Do not silently return zero, false, null, or an arbitrary handle for an unsupported function call.
+
+## Rule 5 — Implement stateful native functions, not superficial stubs
+
+For each native required by the target map's startup dependency graph:
+
+1. Verify the signature.
+2. Determine the expected behavior.
+3. Implement the behavior against the engine's actual runtime state.
+4. Add tests for parameters, return values, side effects, errors, and relevant handle lifecycle.
+5. Record any remaining differences from the target Warcraft III runtime.
+
+Use authoritative declarations from the chosen game version and compare observable behavior against the original client where possible.
+
+YDWE-specific native functions must be implemented according to the actual target YDWE version. Do not infer behavior from the function name alone.
+
+A native that is not implemented must remain explicitly marked unsupported. If execution reaches it, issue an actionable diagnostic and fail the test instead of silently pretending that the call succeeded.
+
+A no-op implementation is allowed only when the operation is genuinely harmless for the supported scenario and that decision is explicitly documented and tested.
+
+Do not implement all 69 native functions indiscriminately before determining their actual dependency order.
+
+## Rule 6 — Provide the minimum runtime services needed by the target map
+
+The target map may require a subset of the simulation system even though full gameplay simulation is deferred.
+
+Implement only the services required by the verified initialization and first end-to-end scenario, such as:
+
+- Player and game-state objects.
+- Map initialization state.
+- Stateful unit, item, destructible, and effect handles when required.
+- Required unit creation and placement functions.
+- Timers and timer callbacks.
+- Trigger registration and event dispatch.
+- Required groups, locations, regions, and other handles.
+- Relevant resource and object-data lookups.
+- Script and native initialization ordering.
+
+Do not create meaningless placeholder entities just to suppress exceptions.
+
+Keep simulation state independent from rendering. Any state change required by a test must be observable through the actual runtime.
+
+## Rule 7 — Test the VM independently
+
+Create a JASS conformance test suite with small synthetic scripts covering:
+
+- Global and local variable initialization.
+- Arrays.
+- Function calls and return values.
+- Nested and recursive calls where supported.
+- Conditionals and loops.
+- Null and handle behavior.
+- Native dispatch.
+- Error reporting and unsupported functions.
+- Trigger registration and timer callback scheduling where implemented.
+
+Add a regression test for every bug encountered in the target script.
+
+Tests must run against the actual implementation, not mock execution results.
+
+## Rule 8 — Run the real map through the engine
+
+Create a reproducible integration harness for the configured target map.
+
+The run must:
+
+1. Resolve and load the actual map resources.
+2. Extract or resolve its actual scripts and required libraries.
+3. Parse and prepare the scripts.
+4. Execute the correct target-version initialization lifecycle.
+5. Invoke native functions through real implementations.
+6. Run initialization triggers and timers required for the first supported scenario.
+7. Produce an execution trace and a native-call coverage report.
+8. Display the resulting world state through the actual engine where possible.
+
+The test must fail if an unsupported stub is invoked along the required execution path.
+
+Do not report map execution as successful merely because the archive opens, the script parses, a window opens, or a screenshot is generated.
+
+If the target map's initialization requires a simulation feature that has been deferred, implement the smallest correct dependency required for the test. Update the feature backlog instead of pretending the map is supported.
+
+## Rule 9 — Keep renderer tasks separate
+
+Do not mix the following deferred work into the primary JASS implementation task unless it directly blocks the integration test:
+
+- Accurate cliff/ramp rendering.
+- Splat-mask orientation and pixel-level comparisons.
+- ParticleEmitter and RibbonEmitter simulation.
+- Billboard rendering.
+- General UI visual polish.
+- Full gameplay simulation and advanced abilities.
+
+Keep these tasks explicitly tracked in the compatibility matrix.
+
+After the JASS milestone passes, proceed with targeted renderer and interaction tests.
+
+## Definition of done
+
+This task is complete only when:
+
+1. A real JASS interpreter executes the target script.
+2. Required script libraries and native bindings resolve correctly.
+3. Native functions called during the required initialization path execute real behavior.
+4. The target map completes initialization far enough to demonstrate the agreed first end-to-end scenario.
+5. No unsupported stub is silently used to manufacture success.
+6. Automated tests and the actual target-map run produce verifiable logs and results.
+7. The report clearly separates working features, tested-but-incomplete features, and unsupported features.
+8. The project builds successfully and existing tests still pass.
+
+Begin with the dependency audit, then implement the smallest complete vertical slice. Continue until the acceptance criteria are actually met. Do not stop after producing documentation or generating code that has not been executed.

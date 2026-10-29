@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>JASS parsing, program model and execution runtime.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\War3Engine.Core\War3Engine.Core.csproj" />
+    <ProjectReference Include="..\..\War3Net-master\src\War3Net.CodeAnalysis.Jass\War3Net.CodeAnalysis.Jass.csproj" />
+  </ItemGroup>
+
+</Project>
