@@ -28,27 +28,27 @@ public static class YdweNatives
             return JassValue.Null;
         }, sideEffects: "Records loaded TOC file names.");
         N("DzTriggerRegisterKeyEvent", "nothing", new[] { "trigger", "integer", "integer", "boolean", "string" },
-            (_, a) => Register(a, $"key-event:{a[1].Integer}:{a[2].Integer}:{a[3].Boolean}:{a[4].Text}"));
+            (_, a) => Register(runtime, a, "key-event", "DzTriggerRegisterKeyEvent", a[1].Integer, $"{a[2].Integer}:{a[3].Boolean}:{a[4].Text}"));
         N("DzTriggerRegisterKeyEventByCode", "nothing", new[] { "trigger", "integer", "integer", "boolean", "code" },
-            (_, a) => Register(a, $"key-event-code:{a[1].Integer}:{a[2].Integer}:{a[3].Boolean}"));
+            (_, a) => Register(runtime, a, "key-event", "DzTriggerRegisterKeyEventByCode", a[1].Integer, $"{a[2].Integer}:{a[3].Boolean}"));
         N("DzTriggerRegisterSyncData", "nothing", new[] { "trigger", "string", "boolean" },
-            (_, a) => Register(a, $"sync:{a[1].Text}:{a[2].Boolean}"));
+            (_, a) => Register(runtime, a, "sync", "DzTriggerRegisterSyncData", key: $"{a[1].Text}:{a[2].Boolean}"));
         N("DzTriggerRegisterMouseEvent", "nothing", new[] { "trigger", "integer", "integer", "boolean", "string" },
-            (_, a) => Register(a, $"mouse:{a[1].Integer}:{a[2].Integer}:{a[3].Boolean}:{a[4].Text}"));
+            (_, a) => Register(runtime, a, "mouse", "DzTriggerRegisterMouseEvent", a[1].Integer, $"{a[2].Integer}:{a[3].Boolean}:{a[4].Text}"));
         N("DzTriggerRegisterMouseEventByCode", "nothing", new[] { "trigger", "integer", "integer", "boolean", "code" },
-            (_, a) => Register(a, $"mouse-code:{a[1].Integer}:{a[2].Integer}:{a[3].Boolean}"));
+            (_, a) => Register(runtime, a, "mouse", "DzTriggerRegisterMouseEventByCode", a[1].Integer, $"{a[2].Integer}:{a[3].Boolean}"));
         N("DzTriggerRegisterMouseWheelEvent", "nothing", new[] { "trigger", "boolean", "string" },
-            (_, a) => Register(a, $"wheel:{a[1].Boolean}:{a[2].Text}"));
+            (_, a) => Register(runtime, a, "wheel", "DzTriggerRegisterMouseWheelEvent", key: $"{a[1].Boolean}:{a[2].Text}"));
         N("DzTriggerRegisterMouseWheelEventByCode", "nothing", new[] { "trigger", "boolean", "code" },
-            (_, a) => Register(a, $"wheel-code:{a[1].Boolean}"));
+            (_, a) => Register(runtime, a, "wheel", "DzTriggerRegisterMouseWheelEventByCode", key: $"{a[1].Boolean}"));
         N("DzTriggerRegisterMouseMoveEvent", "nothing", new[] { "trigger", "boolean", "string" },
-            (_, a) => Register(a, $"move:{a[1].Boolean}:{a[2].Text}"));
+            (_, a) => Register(runtime, a, "move", "DzTriggerRegisterMouseMoveEvent", key: $"{a[1].Boolean}:{a[2].Text}"));
         N("DzTriggerRegisterMouseMoveEventByCode", "nothing", new[] { "trigger", "boolean", "code" },
-            (_, a) => Register(a, $"move-code:{a[1].Boolean}"));
+            (_, a) => Register(runtime, a, "move", "DzTriggerRegisterMouseMoveEventByCode", key: $"{a[1].Boolean}"));
         N("DzTriggerRegisterWindowResizeEvent", "nothing", new[] { "trigger", "boolean", "string" },
-            (_, a) => Register(a, $"resize:{a[1].Boolean}:{a[2].Text}"));
+            (_, a) => Register(runtime, a, "resize", "DzTriggerRegisterWindowResizeEvent", key: $"{a[1].Boolean}:{a[2].Text}"));
         N("DzTriggerRegisterWindowResizeEventByCode", "nothing", new[] { "trigger", "boolean", "code" },
-            (_, a) => Register(a, $"resize-code:{a[1].Boolean}"));
+            (_, a) => Register(runtime, a, "resize", "DzTriggerRegisterWindowResizeEventByCode", key: $"{a[1].Boolean}"));
         N("DzGetMouseX", "integer", none, (_, _) => JassValue.FromInteger(0));
         N("DzGetMouseY", "integer", none, (_, _) => JassValue.FromInteger(0));
         N("DzGetMouseXRelative", "integer", none, (_, _) => JassValue.FromInteger(0));
@@ -83,6 +83,15 @@ public static class YdweNatives
             "implemented", "No platform backend: player has no mall items.");
         N("DzSetUnitModel", "nothing", new[] { "unit", "string" },
             (_, a) => { Unit(a[0]).Model = a[1].Text ?? string.Empty; return JassValue.Null; });
+
+        if (runtime.Lua is not null)
+        {
+            N("EXExecuteScript", "string", new[] { "string" }, (_, a) =>
+            {
+                var evaluation = runtime.Lua.Evaluate(a[0].Text ?? string.Empty);
+                return evaluation.Value is null ? JassValue.Null : JassValue.FromString(evaluation.Value);
+            }, sideEffects: "Executes the JASS expression through the YDWE Lua bridge.");
+        }
 
         // Platform data queries used by YDWE libraries: documented empty values.
         var extraParams = new[] { "integer", "player", "string", "string", "boolean", "integer", "integer", "integer" };
@@ -131,29 +140,24 @@ public static class YdweNatives
         N("DzFrameGetUpperButtonBarButton", "integer", new[] { "integer" }, (_, _) => JassValue.FromInteger(CreateFrame(runtime, "UpperButtonBarButton", string.Empty, RootFrame)));
     }
 
-    private static JassValue Register(JassValue[] args, string description)
+    private static JassValue Register(JassGameRuntime runtime, JassValue[] args, string kind, string function, int eventId = -1, string key = "")
     {
         TriggerState trigger;
         if (args[0].IsNull)
         {
-            trigger = UiTriggerHolder.Current ??= new TriggerState();
-            trigger.Events.Add(description);
-            return JassValue.Null;
+            trigger = runtime.UiTrigger ??= new TriggerState();
         }
-
-        if (args[0].Kind != JassValueKind.Handle || args[0].Handle?.State is not TriggerState state)
+        else if (args[0].Kind == JassValueKind.Handle && args[0].Handle?.State is TriggerState state)
+        {
+            trigger = state;
+        }
+        else
         {
             throw new JassRuntimeException("expected trigger handle");
         }
 
-        state.Events.Add(description);
+        runtime.Register(trigger, kind, function, eventId, key: key);
         return JassValue.Null;
-    }
-
-    private static class UiTriggerHolder
-    {
-        [ThreadStatic]
-        public static TriggerState? Current;
     }
 
     private static UnitState Unit(JassValue value)

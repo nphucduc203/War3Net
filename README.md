@@ -6,14 +6,17 @@ assets and W3X maps directly — no Blender/GLB pipeline, no game engine shortcu
 Current state (see `docs/STATUS.md`):
 - Milestone A: animated MDX model viewer with WC3 material/blend semantics — done.
 - Milestone C: static W3X map viewer (terrain + doodads) — core done, cliffs/water pending.
-- JASS runtime: real parser + VM; target YDWE map initialization executes (14 units,
-  228 triggers, 16 timers, 6,437 native calls). Gameplay path still in progress.
+- JASS runtime: real parser + VM; target YDWE map initialization, timers, EXExecuteScript
+  Lua bridge (NLua/Lua 5.4), chat dispatch, dialog + unit-selection event dispatch through the
+  viewer UI, custom object-data lookups, engine input routing, and runtime unit rendering are
+  verified (120 s: 16,312 timer callbacks; dialog click runs the nested mode trigger; selecting
+  a unit dispatches the map's selection trigger and stores its handle).
 - YDWE compatibility layer, dependency reports and viewer UI: implemented.
 
 ## Requirements
 
 - .NET 10 SDK (pinned by `global.json`; Visual Studio 2026).
-- A local Warcraft III 1.27d installation (MPQ era) for original assets.
+- A local Warcraft III 1.27 installation (MPQ era; 1.27.0.52240 verified) for original assets.
 
 ## Setup
 

@@ -1,6 +1,8 @@
 using War3Engine.Assets;
 using War3Engine.Core;
 using War3Engine.Scripting;
+using War3Engine.Scripting.Lua;
+using War3Net.Common.Extensions;
 
 namespace War3Engine.Inspector;
 
@@ -13,7 +15,8 @@ internal static class JassRunner
         string? mapPath,
         long maxSteps,
         int advanceMs,
-        bool traceNatives)
+        bool traceNatives,
+        string[]? args = null)
     {
         var target = mapPath
                      ?? (string.IsNullOrWhiteSpace(settings.YdweMapPath) ? settings.MapPath : settings.YdweMapPath);
@@ -29,7 +32,10 @@ internal static class JassRunner
         var mapSource = Read(store, "war3map.j");
         Console.WriteLine($"scripts: common.j={commonSource.Length} blizzard.j={blizzardSource.Length} war3map.j={mapSource.Length}");
 
-        var result = JassMapHost.Run(commonSource, blizzardSource, mapSource, maxSteps, advanceMs);
+        var slk = JassSlkQueryProvider.Load(store, target);
+        var bridge = new NLuaBridge(slk.Query);
+        var chat = GetOption(args: Environment.GetCommandLineArgs(), "--chat");
+        var result = JassMapHost.Run(commonSource, blizzardSource, mapSource, maxSteps, advanceMs, lua: bridge, chatMessage: chat);
         Console.WriteLine($"parsed in {result.ParseMilliseconds} ms; functions={result.Program.Functions.Count} natives={result.Program.Natives.Count} globals={result.Program.Globals.Count} types={result.Program.Types.Count}");
         if (result.GlobalsInitialized)
         {
@@ -68,15 +74,60 @@ internal static class JassRunner
             }
         }
 
-        Console.WriteLine($"state: units={result.UnitsAlive} triggers={result.TriggerCount} timers={result.TimerCount} frames={result.FrameCount} timerCallbacks={result.TimerCallbacks} tocs={result.Runtime.LoadedTocs.Count}");
+        var chatPatterns = result.Runtime.Registrations
+            .Where(r => r.Kind == "chat")
+            .Select(r => $"chat:{r.PlayerId}:{r.Key}:{r.Exact}")
+            .Distinct()
+            .Take(30)
+            .ToArray();
+        Console.WriteLine($"chat triggers ({chatPatterns.Length}): {string.Join(" | ", chatPatterns)}");
+        var art = MapArtCache.Load(store, target);
+        foreach (var unit in result.Runtime.Units.Where(u => !u.Removed))
+        {
+            var resolved = art.ResolveUnit(unit.TypeId);
+            art.TryGetOverride(unit.TypeId, out var overrideModel, out var baseId);
+            Console.WriteLine($"unit {unit.TypeId.ToRawcode()} owner={unit.OwnerId} @{unit.X:F0},{unit.Y:F0} facing={unit.Facing:F2} model={resolved?.ModelPath ?? "UNRESOLVED"} scale={resolved?.Scale ?? 0:F2} override={overrideModel ?? "-"} base={baseId.ToRawcode()} overrides={art.OverrideCount}");
+        }
+        Console.WriteLine($"messages: {result.Runtime.DisplayMessages.Count}; last={result.Runtime.DisplayMessages.LastOrDefault()}");
+        if (result.Vm.TryGetGlobalValue("udg_guaibs", out var wave))
+        {
+            Console.WriteLine($"global udg_guaibs = {wave}");
+        }
+
+        Console.WriteLine($"state: units={result.UnitsAlive} triggers={result.TriggerCount} timers={result.TimerCount} frames={result.FrameCount} timerCallbacks={result.TimerCallbacks} chatFired={result.ChatFired} tocs={result.Runtime.LoadedTocs.Count}");
         Console.WriteLine($"native calls: {result.NativeCalls}");
         foreach (var pair in result.Runtime.NativeCalls.OrderByDescending(p => p.Value).Take(15))
         {
             Console.WriteLine($"  {pair.Key}: {pair.Value}");
         }
 
+        Console.WriteLine($"slk: wts={slk.WtsEntries} itemI033={slk.DebugItemFields(858992713)}");
+        Console.WriteLine($"lua: calls={bridge.History.Count} errors={bridge.History.Count(h => h.ErrorKind != LuaErrorKind.None)} missingFields={bridge.MissingFields.Count}");
+        foreach (var call in bridge.History.Where(h => h.ErrorKind != LuaErrorKind.None).Take(3))
+        {
+            Console.WriteLine($"  lua error [{call.ErrorKind}] expr={call.Expression} err={call.Error}");
+        }
+
+        foreach (var call in bridge.History.Take(5))
+        {
+            Console.WriteLine($"  lua expr={call.Expression} => {(call.Value is null ? "null" : call.Value)}");
+        }
+
         Console.WriteLine("RESULT: target map initialization executed by the JASS VM");
         return 0;
+    }
+
+    private static string? GetOption(string[] args, string name)
+    {
+        for (var i = 0; i < args.Length - 1; i++)
+        {
+            if (args[i] == name)
+            {
+                return args[i + 1];
+            }
+        }
+
+        return null;
     }
 
     private static string Read(AssetStore store, string path)

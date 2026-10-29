@@ -1,3 +1,5 @@
+using War3Engine.Scripting.Lua;
+
 namespace War3Engine.Scripting;
 
 public sealed class JassMapRunResult
@@ -7,6 +9,8 @@ public sealed class JassMapRunResult
     public required JassGameRuntime Runtime { get; init; }
 
     public required JassVirtualMachine Vm { get; init; }
+
+    public required JassNativeRegistry Registry { get; init; }
 
     public bool GlobalsInitialized { get; set; }
 
@@ -30,6 +34,8 @@ public sealed class JassMapRunResult
 
     public int FrameCount => Runtime.Frames.Count;
 
+    public int ChatFired { get; set; }
+
     public long NativeCalls => Runtime.NativeCalls.Values.Sum();
 }
 
@@ -44,7 +50,7 @@ public static class JassMapHost
         var registry = new JassNativeRegistry();
         StandardNatives.Register(registry, runtime);
         RuntimeNatives.Register(registry, program, runtime);
-        ConstantNatives.Register(registry, program);
+        ConstantNatives.Register(registry, program, runtime);
         YdweNatives.Register(registry, runtime);
         return registry;
     }
@@ -55,7 +61,9 @@ public static class JassMapHost
         string mapSource,
         long maxSteps = 5_000_000,
         int advanceMs = 0,
-        bool executeDebugStatements = false)
+        bool executeDebugStatements = false,
+        IJassLua? lua = null,
+        string? chatMessage = null)
     {
         var watch = System.Diagnostics.Stopwatch.StartNew();
         var common = JassProgramModel.Build(JassProgram.Parse(commonSource));
@@ -64,7 +72,7 @@ public static class JassMapHost
         var merged = JassProgramMerge.Merge(common, blizzard, map);
         watch.Stop();
 
-        var runtime = new JassGameRuntime();
+        var runtime = new JassGameRuntime { Lua = lua };
         var registry = CreateRegistry(merged, runtime);
         var vm = new JassVirtualMachine(merged, registry, new JassExecutionOptions
         {
@@ -78,6 +86,7 @@ public static class JassMapHost
             Program = merged,
             Runtime = runtime,
             Vm = vm,
+            Registry = registry,
             ParseMilliseconds = watch.ElapsedMilliseconds,
         };
 
@@ -93,11 +102,12 @@ public static class JassMapHost
             result.MainCompleted = true;
             result.MainMilliseconds = watch.ElapsedMilliseconds;
 
-            runtime.Advance(0);
-            runtime.RunDueTimers();
-            for (var elapsed = 0; elapsed < advanceMs; elapsed += 100)
+            Advance(runtime, advanceMs);
+
+            if (!string.IsNullOrEmpty(chatMessage))
             {
-                runtime.Advance(100);
+                result.ChatFired = runtime.DispatchChat(0, chatMessage);
+                runtime.Advance(0);
                 runtime.RunDueTimers();
             }
         }
@@ -108,6 +118,18 @@ public static class JassMapHost
 
         return result;
     }
+
+    /// <summary>Advances the runtime in deterministic 100 ms steps and runs due timers.</summary>
+    public static void Advance(JassGameRuntime runtime, int milliseconds)
+    {
+        runtime.Advance(0);
+        runtime.RunDueTimers();
+        for (var elapsed = 0; elapsed < milliseconds; elapsed += 100)
+        {
+            runtime.Advance(100);
+            runtime.RunDueTimers();
+        }
+    }
 }
 
 /// <summary>Registers Convert* enum helpers with cached handles (common.j constants).</summary>
@@ -115,7 +137,7 @@ public static class ConstantNatives
 {
     private static readonly Dictionary<(string Type, int Id), JassHandle> Cache = new();
 
-    public static void Register(JassNativeRegistry registry, JassProgramModel program)
+    public static void Register(JassNativeRegistry registry, JassProgramModel program, JassGameRuntime? runtime = null)
     {
         foreach (var native in program.Natives.Values)
         {
@@ -133,6 +155,7 @@ public static class ConstantNatives
                 parameters,
                 (_, args) =>
                 {
+                    runtime?.CountNative(native.Name);
                     if (primitive)
                     {
                         return returnType switch

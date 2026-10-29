@@ -18,7 +18,7 @@ public static class MapSceneLoader
     private const float TileSize = 128f;
     private const float HeightCorrection = TileSize * 2f;
 
-    public static MapSceneData Load(AssetStore store, string mapPath, int maxPlacements = 2000)
+    public static MapSceneData Load(AssetStore store, string mapPath, int maxPlacements = 2000, bool includeUnits = true)
     {
         store.MountMap(mapPath);
         var package = MapPackage.Load(mapPath);
@@ -75,7 +75,7 @@ public static class MapSceneLoader
             });
         }
 
-        var units = map.Units?.Units ?? new List<UnitData>();
+        var units = includeUnits ? map.Units?.Units ?? new List<UnitData>() : new List<UnitData>();
         foreach (var unit in units)
         {
             var art = tables.FindUnit(unit.TypeId);

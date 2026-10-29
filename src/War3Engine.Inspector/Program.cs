@@ -35,6 +35,10 @@ internal static class Program
                     return InspectMap(store, args.ElementAtOrDefault(1) ?? settings.MapPath);
                 case "mapdata":
                     return InspectMapData(args.ElementAtOrDefault(1) ?? settings.MapPath);
+                case "metrics":
+                    return RuntimeMetrics.Run(settings, store);
+                case "eventaudit":
+                    return EventAudit.Run(settings, store);
                 case "runmap":
                     return JassRunner.Run(
                         settings,
@@ -42,7 +46,8 @@ internal static class Program
                         args.ElementAtOrDefault(1),
                         args.ElementAtOrDefault(2) is { } steps ? long.Parse(steps) : 5_000_000,
                         args.ElementAtOrDefault(3) is { } advance ? int.Parse(advance) : 0,
-                        args.Contains("--trace"));
+                        args.Contains("--trace"),
+                        args);
                 case "mapaudit":
                     return MapAudit.Run(settings, store, args.ElementAtOrDefault(1), args.ElementAtOrDefault(2) ?? "docs");
                 case "jassparse":
@@ -580,6 +585,26 @@ internal static class Program
             foreach (var mod in unitsData.BaseUnits.Take(2))
             {
                 Console.WriteLine($"  base {mod.OldId.ToRawcode()} mods={mod.Modifications.Count} [{string.Join(",", mod.Modifications.Take(6).Select(m => m.Id.ToRawcode() + "=" + m.Value))}]");
+            }
+        }
+
+        var itemData = map.ItemObjectData;
+        Console.WriteLine($"item object data: base={itemData?.BaseItems.Count ?? 0} new={itemData?.NewItems.Count ?? 0}");
+        if (itemData is not null)
+        {
+            foreach (var mod in itemData.NewItems.Where(m => m.NewId.ToRawcode() is "I033" or "I010" or "I01O"))
+            {
+                Console.WriteLine($"  TARGET {mod.NewId.ToRawcode()} <- {mod.OldId.ToRawcode()} mods={mod.Modifications.Count} [{string.Join(",", mod.Modifications.Select(m => m.Id.ToRawcode() + "=" + m.Value))}]");
+            }
+
+            foreach (var mod in itemData.NewItems.Take(4))
+            {
+                Console.WriteLine($"  {mod.NewId.ToRawcode()} <- {mod.OldId.ToRawcode()} mods={mod.Modifications.Count} [{string.Join(",", mod.Modifications.Take(12).Select(m => m.Id.ToRawcode() + "=" + m.Value))}]");
+            }
+
+            foreach (var mod in itemData.BaseItems.Take(2))
+            {
+                Console.WriteLine($"  base {mod.OldId.ToRawcode()} mods={mod.Modifications.Count} [{string.Join(",", mod.Modifications.Take(8).Select(m => m.Id.ToRawcode() + "=" + m.Value))}]");
             }
         }
 

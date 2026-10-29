@@ -195,6 +195,51 @@ public class JassVmTests
     }
 
     [Fact]
+    public void S2IAndS2RParseNumericPrefixes()
+    {
+        const string script = """
+            native S2I takes string s returns integer
+            native S2R takes string s returns real
+
+            function ToInt takes nothing returns integer
+                return S2I("-12.9")
+            endfunction
+
+            function ToInt2 takes nothing returns integer
+                return S2I("12abc")
+            endfunction
+
+            function ToReal takes nothing returns real
+                return S2R("1.5x")
+            endfunction
+            """;
+
+        var program = JassProgramModel.Build(JassProgram.Parse(script));
+        var runtime = new JassGameRuntime();
+        var registry = new JassNativeRegistry();
+        StandardNatives.Register(registry, runtime);
+        RuntimeNatives.Register(registry, program, runtime);
+        var vm = new JassVirtualMachine(program, registry);
+        vm.InitializeGlobals();
+
+        Assert.Equal(-12, vm.Invoke("ToInt").Integer);
+        Assert.Equal(12, vm.Invoke("ToInt2").Integer);
+        Assert.Equal(1.5f, vm.Invoke("ToReal").Real);
+    }
+
+    [Fact]
+    public void FourCCLiteralsUseMapLittleEndianIds()
+    {
+        const string script = """
+            function Id takes nothing returns integer
+                return 'hfoo'
+            endfunction
+            """;
+        var vm = CreateVm(script);
+        Assert.Equal(0x6F6F6668, vm.Invoke("Id").Integer);
+    }
+
+    [Fact]
     public void StartupAnalysisFollowsExecuteFuncStrings()
     {
         const string script = """

@@ -29,7 +29,7 @@ public sealed class MapPackage
         // YDWE maps can carry non-standard values (e.g. weather id "0000") that strict
         // enum parsing rejects. Retry without the offending sections instead of failing the map.
         var package = new MapPackage(null!, path);
-        foreach (var files in new[] { MapFiles.All, MapFiles.All & ~MapFiles.Info, MapFiles.Environment | MapFiles.Doodads | MapFiles.Units | MapFiles.PathingMap | MapFiles.ImportedFiles | MapFiles.UnitObjectData | MapFiles.DoodadObjectData | MapFiles.DestructableObjectData })
+        foreach (var files in new[] { MapFiles.All, MapFiles.All & ~MapFiles.Info, MapFiles.Environment | MapFiles.Doodads | MapFiles.Units | MapFiles.PathingMap | MapFiles.ImportedFiles | MapFiles.UnitObjectData | MapFiles.DoodadObjectData | MapFiles.DestructableObjectData | MapFiles.ItemObjectData | MapFiles.AbilityObjectData | MapFiles.BuffObjectData | MapFiles.UpgradeObjectData })
         {
             try
             {

@@ -80,7 +80,7 @@ public static class StandardNatives
             runtime.Triggers.Add(state);
             return JassValue.FromHandle(handle);
         });
-        N("DestroyTrigger", "nothing", new[] { "trigger" }, (_, a) => { Trigger(a[0]).Enabled = false; return JassValue.Null; });
+        N("DestroyTrigger", "nothing", new[] { "trigger" }, (_, a) => { runtime.DestroyTrigger(Trigger(a[0])); return JassValue.Null; });
         N("TriggerAddAction", "triggeraction", new[] { "trigger", "code" },
             (_, a) => { Trigger(a[0]).Actions.Add(a[1]); return Handle("triggeraction", null); });
         N("TriggerAddCondition", "triggercondition", new[] { "trigger", "boolexpr" },
@@ -94,31 +94,57 @@ public static class StandardNatives
         N("DisableTrigger", "nothing", new[] { "trigger" }, (_, a) => { Trigger(a[0]).Enabled = false; return JassValue.Null; });
         N("IsTriggerEnabled", "boolean", new[] { "trigger" }, (_, a) => JassValue.FromBoolean(Trigger(a[0]).Enabled));
         N("TriggerRegisterEnterRegion", "event", new[] { "trigger", "region", "boolexpr" },
-            (_, a) => RegisterEvent(a[0], "enter-region"));
+            (_, a) =>
+            {
+                runtime.Register(Trigger(a[0]), "enter-region", "TriggerRegisterEnterRegion", source: a[1].Handle, filter: a[2]);
+                return JassValue.Null;
+            });
         N("TriggerRegisterLeaveRegion", "event", new[] { "trigger", "region", "boolexpr" },
-            (_, a) => RegisterEvent(a[0], "leave-region"));
+            (_, a) =>
+            {
+                runtime.Register(Trigger(a[0]), "leave-region", "TriggerRegisterLeaveRegion", source: a[1].Handle, filter: a[2]);
+                return JassValue.Null;
+            });
         N("TriggerRegisterPlayerChatEvent", "event", new[] { "trigger", "player", "string", "boolean" },
-            (_, a) => RegisterEvent(a[0], $"chat:{PlayerId(a[1])}:{a[2].Text}:{a[3].Boolean}"));
+            (_, a) =>
+            {
+                runtime.Register(Trigger(a[0]), "chat", "TriggerRegisterPlayerChatEvent", eventId: 16, playerId: PlayerId(a[1]), key: a[2].Text ?? string.Empty, exact: a[3].Boolean);
+                return JassValue.Null;
+            });
         N("TriggerRegisterPlayerEvent", "event", new[] { "trigger", "player", "playerevent" },
-            (_, a) => RegisterEvent(a[0], $"player-event:{PlayerId(a[1])}:{EnumId(a[2])}"));
+            (_, a) =>
+            {
+                runtime.Register(Trigger(a[0]), "player-event", "TriggerRegisterPlayerEvent", eventId: EnumId(a[2]), playerId: PlayerId(a[1]));
+                return JassValue.Null;
+            });
         N("TriggerRegisterPlayerUnitEvent", "event", new[] { "trigger", "player", "playerunitevent", "boolexpr" },
-            (_, a) => RegisterEvent(a[0], $"player-unit-event:{PlayerId(a[1])}:{EnumId(a[2])}"));
+            (_, a) =>
+            {
+                runtime.Register(Trigger(a[0]), "player-unit-event", "TriggerRegisterPlayerUnitEvent", eventId: EnumId(a[2]), playerId: PlayerId(a[1]), filter: a[3]);
+                return JassValue.Null;
+            });
         N("TriggerRegisterTimerEvent", "event", new[] { "trigger", "real", "boolean" },
             (_, a) =>
             {
                 var timer = new TimerState
                 {
-                    Trigger = Trigger(a[0]),
                     RemainingMs = a[1].Real * 1000.0,
                     PeriodMs = a[1].Real * 1000.0,
                     Periodic = a[2].Boolean,
                     Running = true,
                 };
+                timer.Handle = new JassHandle("timer", timer);
+                timer.HandleId = timer.Handle.Id;
                 runtime.Timers.Add(timer);
+                runtime.Register(Trigger(a[0]), "timer", "TriggerRegisterTimerEvent", source: timer.Handle, key: $"{a[1].Real}:{a[2].Boolean}");
                 return JassValue.Null;
             });
         N("TriggerRegisterTimerExpireEvent", "event", new[] { "trigger", "timer" },
-            (_, a) => RegisterEvent(a[0], "timer-expire"));
+            (_, a) =>
+            {
+                runtime.Register(Trigger(a[0]), "timer-expire", "TriggerRegisterTimerExpireEvent", source: a[1].Handle);
+                return JassValue.Null;
+            });
 
         // Timers ---------------------------------------------------------------
         N("CreateTimer", "timer", noParams, (_, _) =>
@@ -126,6 +152,7 @@ public static class StandardNatives
             var state = new TimerState();
             var handle = (JassHandle)Handle("timer", state).Handle!;
             state.HandleId = handle.Id;
+            state.Handle = handle;
             return JassValue.FromHandle(handle);
         });
         N("DestroyTimer", "nothing", new[] { "timer" }, (_, a) => { Timer(a[0]).Destroyed = true; Timer(a[0]).Running = false; return JassValue.Null; });
@@ -172,7 +199,9 @@ public static class StandardNatives
                 runtime.Units.Add(unit);
                 return JassValue.FromHandle(handle);
             });
-        N("RemoveUnit", "nothing", new[] { "unit" }, (_, a) => { State<UnitState>(a[0], "unit").Removed = true; return JassValue.Null; });
+        N("RemoveUnit", "nothing", new[] { "unit" }, (_, a) => { runtime.RemoveUnit(State<UnitState>(a[0], "unit")); return JassValue.Null; });
+        N("SelectUnit", "nothing", new[] { "unit", "boolean" }, (_, a) => { runtime.SelectUnit(State<UnitState>(a[0], "unit"), 0, a[1].Boolean); return JassValue.Null; });
+        N("ClearSelection", "nothing", noParams, (_, _) => { runtime.ClearSelection(0); return JassValue.Null; });
         N("GetUnitX", "real", new[] { "unit" }, (_, a) => JassValue.FromReal(State<UnitState>(a[0], "unit").X));
         N("GetUnitY", "real", new[] { "unit" }, (_, a) => JassValue.FromReal(State<UnitState>(a[0], "unit").Y));
         N("GetUnitFacing", "real", new[] { "unit" }, (_, a) => JassValue.FromReal(State<UnitState>(a[0], "unit").Facing));
@@ -350,12 +379,43 @@ public static class StandardNatives
         N("SetMapMusic", "nothing", new[] { "string", "boolean", "integer" }, (_, a) => { runtime.MapMusic = a[0].Text ?? string.Empty; return JassValue.Null; });
 
         // Dialogs --------------------------------------------------------------
-        N("DialogCreate", "dialog", noParams, (_, _) => Handle("dialog", new DialogState()));
+        N("DialogCreate", "dialog", noParams, (_, _) =>
+        {
+            var dialog = new DialogState();
+            var handle = new JassHandle("dialog", dialog);
+            dialog.Handle = handle;
+            runtime.Dialogs.Add(dialog);
+            return JassValue.FromHandle(handle);
+        });
         N("DialogSetMessage", "nothing", new[] { "dialog", "string" }, (_, a) => { State<DialogState>(a[0], "dialog").Message = a[1].Text ?? string.Empty; return JassValue.Null; });
         N("DialogAddButton", "button", new[] { "dialog", "string", "integer" },
-            (_, a) => { var b = Handle("button", a[1].Text); State<DialogState>(a[0], "dialog").Buttons.Add(b.Handle!); return b; });
-        N("DialogDisplay", "nothing", new[] { "player", "dialog", "boolean" }, (_, a) => { State<DialogState>(a[1], "dialog").Visible = a[2].Boolean; return JassValue.Null; });
-        N("DialogDestroy", "nothing", new[] { "dialog" }, (_, a) => { State<DialogState>(a[0], "dialog").Buttons.Clear(); return JassValue.Null; });
+            (_, a) =>
+            {
+                var dialog = State<DialogState>(a[0], "dialog");
+                var button = new DialogButtonState { Dialog = dialog, Label = a[1].Text ?? string.Empty, Hotkey = a[2].Integer };
+                var handle = new JassHandle("button", button);
+                button.Handle = handle;
+                dialog.Buttons.Add(button);
+                return JassValue.FromHandle(handle);
+            });
+        N("DialogDisplay", "nothing", new[] { "player", "dialog", "boolean" },
+            (_, a) =>
+            {
+                var dialog = State<DialogState>(a[1], "dialog");
+                dialog.PlayerId = PlayerId(a[0]);
+                dialog.Visible = a[2].Boolean;
+                return JassValue.Null;
+            });
+        N("DialogDestroy", "nothing", new[] { "dialog" },
+            (_, a) =>
+            {
+                var dialog = State<DialogState>(a[0], "dialog");
+                dialog.Destroyed = true;
+                dialog.Visible = false;
+                dialog.Buttons.Clear();
+                runtime.Dialogs.Remove(dialog);
+                return JassValue.Null;
+            });
 
         N("ExecuteFunc", "nothing", new[] { "string" }, (vm, a) =>
         {
@@ -367,12 +427,6 @@ public static class StandardNatives
     private static JassValue Save(JassValue[] arguments, Action<HashtableState, long> save)
     {
         save(Hashtable(arguments[0]), HashtableState.Key(arguments[1].Integer, arguments[2].Integer));
-        return JassValue.Null;
-    }
-
-    private static JassValue RegisterEvent(JassValue trigger, string description)
-    {
-        Trigger(trigger).Events.Add(description);
         return JassValue.Null;
     }
 

@@ -1,4 +1,4 @@
-# Project status (2026-10-29)
+# Project status (2026-10-30)
 
 Target baseline: Warcraft III **1.27.0.52240** MPQ install at `D:/Games/Warcraft 3.2`
 (not 1.27d). Maps:
@@ -60,12 +60,49 @@ is not installed" warning came from vendored War3Net projects multi-targeting ne
   native dispatch separated), common.j + Blizzard.j + war3map.j merged.
 - Target map initialization **executes through the VM**: 14 units, 228 triggers, 16 timers,
   8 YDWE frames, 6,437 native calls, ~56k VM steps; `main` completes.
-- 68/265 declared extension natives bound; all 3 extension natives reachable from `main`
-  implemented. Missing natives fail with name, signature and call stack.
-- Timer scheduler executes one-shot/periodic callbacks against runtime state (tested).
-- Dependency reports: `docs/target-map-jass-dependencies.md`, `docs/target-map-native-status.json`.
-- Next blocker: advancing timers 3 s reaches `EXExecuteScript` Lua JASS-SLK queries;
-  gameplay scenario not yet complete. Details: `docs/JASS_RUNTIME.md`.
+- 69/265 declared extension natives bound; 470 native implementations registered in total.
+  Missing natives fail with name, signature and call stack.
+- Native coverage (120 s scenario + dialog click + selection + chat): 1,425 declared,
+  470 implemented, 196 exercised by tests/scenarios, 192 distinct natives called by the map
+  (28 extension natives).
+- **EXExecuteScript Lua bridge implemented** (YDWE semantics: `return (trigstring expr)`,
+  persistent Lua state, string/number results, errors -> JASS null). Target Lua is 5.3.6;
+  the bridge uses NLua/Lua 5.4 (5.3.6 DLL is 32-bit) with Lua 5.3-style numeric conformance tests.
+- Timer scheduler executes one-shot/periodic callbacks through the event model; 120 s advance
+  runs 16,312 callbacks (16,202 in the dialog-click metrics scenario), 3 real Lua calls
+  (0 errors), 32 timers, 708 YDWE frames; 300 s also completes (40,850 callbacks).
+- Data: w3t/w3u object data overrides base SLKs; 3/3 custom Ubertip queries hit object data,
+  2 TRIGSTR references are absent from war3map.wts and stay literal (I033/I010).
+- Chat event dispatch verified with the map's command processor: `T5` sets
+  `udg_guaibs=5` and produces a display message. Engine input layer (F5 hotkey -> chat event)
+  has a deterministic test; OS-level key injection remains manual.
+- Events: 1,923 registrations across 31 (kind, ID) families at startup (1,911 surviving at
+  120 s across 13 kinds). Timer, chat and dialog dispatch are verified end to end.
+- **Dialog event dispatch verified**: the viewer renders the map's startup dialog, a real
+  mouse hit-test calls `ViewerInput.DispatchDialogClick` -> `JassGameRuntime.DispatchDialogClick`,
+  and clicking "Mô hình luyện tập" fires the map's condition-only dialog trigger, sets
+  `udg_yxms=true`, appends the practice message, hides the dialog and executes the nested
+  `gg_trg_xznd03______u` trigger. Event context depth returns to 0, failures 0.
+  Evidence: `artifacts/dialog_before.png`, `artifacts/dialog_after.png`,
+  `docs/event-dispatch-coverage.json`, `docs/event-dispatch-roadmap.md`.
+- **Unit selection event verified**: the viewer projects runtime units and picks a unit with a
+  real mouse click (owner-only), `SelectUnit`/`ClearSelection` JASS natives use the same producer,
+  and selecting `U00O` as player 8 dispatched `EVENT_PLAYER_UNIT_SELECTED` once. The map trigger
+  `gg_trg____________________005` ran, `GetTriggerUnit`/`GetTriggerPlayer` were correct, and its
+  action stored the unit handle in `YDHT` under the player-8 key. Wrong-player selection is
+  rejected, re-selection is deduplicated, and `RemoveUnit`/`ClearSelection` clean up selection
+  state. Visible evidence: `artifacts/selection_after.png`.
+- Other event families (orders/attack/damage/death/spells/items/player/region/state/sync/key/mouse)
+  remain registered only; their producers and response natives are listed in the coverage JSON.
+- Runtime units are rendered by the client (`--run-jass`): 14 units, 8 unique models,
+  0 unresolved art; FourCC little-endian bug fixed.
+- Dependency reports: `docs/target-map-jass-dependencies.md`,
+  `docs/target-map-native-status.json`; scenario report:
+  `docs/target-map-gameplay-scenario.md`.
+- Remaining: 196 extension natives, coroutine sleeps (`TriggerSleepAction` unused by this
+  map), order/movement and combat event producers, other player-unit/unit/player/region/state/
+  sync/YDWE input events, Lua 5.3-vs-5.4 differences, two unresolved TRIGSTR references,
+  OS-level automated input verification.
 
 ## Partially working / next
 
@@ -74,8 +111,9 @@ is not installed" warning came from vendored War3Net projects multi-targeting ne
   depth coloring or animation.
 - Model runtime: billboard nodes, texture UV animation, ParticleEmitter(2), ribbons,
   global blended-layer sort by priority plane.
-- YDWE: extension natives are only partially implemented (68/265 bound); the map initializes
-  but later gameplay/UI trigger paths still hit unimplemented natives (next: EXExecuteScript).
+- YDWE: extension natives are partially implemented (69/265 bound). The verified scenario
+  (init + timers + Lua bridge + chat T5 + runtime unit rendering) runs; other gameplay
+  paths may still hit unimplemented natives.
 - Text `.mdl` models are unsupported; custom object art resolves `.mdl` names to `.mdx`.
 - Simulation, audio, fog, campaign, networking: not started.
 

@@ -37,6 +37,18 @@ public sealed class JassVirtualMachine
 
     public Action<string>? NativeTrace { get; set; }
 
+    public bool TryGetGlobalValue(string name, out JassValue value)
+    {
+        if (_globals.TryGetValue(name, out var slot) && slot.Array is null)
+        {
+            value = slot.Value;
+            return true;
+        }
+
+        value = JassValue.Null;
+        return false;
+    }
+
     public void InitializeGlobals()
     {
         if (GlobalsInitialized)
@@ -176,7 +188,7 @@ public sealed class JassVirtualMachine
         try
         {
             var flow = ExecuteStatements(function.Declaration.Statements, frame);
-            if (flow == Flow.Return && _returnValue.Kind != JassValueKind.Null)
+            if (flow == Flow.Return)
             {
                 return ConvertForType(_returnValue, function.ReturnType, $"return value of {function.Name}");
             }
@@ -400,7 +412,7 @@ public sealed class JassVirtualMachine
             JassSyntaxKind.OctalLiteralToken => JassValue.FromInteger(JassLiteral.ParseOctal(token.Text)),
             JassSyntaxKind.RealLiteralToken => JassValue.FromReal(float.Parse(token.Text, NumberStyles.Float, CultureInfo.InvariantCulture)),
             JassSyntaxKind.StringLiteralToken => JassValue.FromString(Unescape(token.Text)),
-            JassSyntaxKind.FourCCLiteralToken => JassValue.FromInteger(JassLiteral.ParseFourCC(token.Text)),
+            JassSyntaxKind.FourCCLiteralToken => JassValue.FromInteger(ParseFourCCLittleEndian(token.Text)),
             JassSyntaxKind.CharacterLiteralToken => JassValue.FromInteger(JassLiteral.ParseChar(token.Text)),
             JassSyntaxKind.TrueKeyword => JassValue.FromBoolean(true),
             JassSyntaxKind.FalseKeyword => JassValue.FromBoolean(false),
@@ -623,6 +635,26 @@ public sealed class JassVirtualMachine
 
     internal string CurrentFunction => _callStack.Count > 0 ? _callStack[^1] : "<entry>";
 
+    /// <summary>Function that called the current native; used to attribute event registrations.</summary>
+    public string CallerFunction => _callStack.Count > 1 ? _callStack[^2] : "<entry>";
+
+    public string CallerChain(int depth)
+    {
+        var start = Math.Max(0, _callStack.Count - 1 - depth);
+        return string.Join(" < ", _callStack.Skip(start).Take(_callStack.Count - 1 - start));
+    }
+
+    public IEnumerable<KeyValuePair<string, JassValue>> SnapshotGlobals()
+    {
+        foreach (var pair in _globals)
+        {
+            if (pair.Value.Array is null)
+            {
+                yield return new KeyValuePair<string, JassValue>(pair.Key, pair.Value.Value);
+            }
+        }
+    }
+
     // Type handling ---------------------------------------------------------
 
     private static readonly HashSet<string> PrimitiveTypes = new(StringComparer.Ordinal)
@@ -748,6 +780,20 @@ public sealed class JassVirtualMachine
     private static float AsReal(JassValue value) => value.Kind == JassValueKind.Integer ? value.Integer : value.Real;
 
     private static string TypeName(JassTypeSyntax type) => type.ToString().Trim();
+
+    /// <summary>
+    /// Object ids in map/object-data files are little-endian rawcodes ('hfoo' = 0x6F6F6668).
+    /// War3Net's JassLiteral.ParseFourCC produces big-endian, which does not match map ids.
+    /// </summary>
+    private static int ParseFourCCLittleEndian(string literal)
+    {
+        if (literal.Length < 6)
+        {
+            throw new JassRuntimeException($"invalid fourcc literal {literal}");
+        }
+
+        return literal[1] | (literal[2] << 8) | (literal[3] << 16) | (literal[4] << 24);
+    }
 
     private static string Unescape(string literal)
     {

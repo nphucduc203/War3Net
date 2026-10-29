@@ -45,13 +45,17 @@ Next: model/map pickers, material/bone inspection panels, diagnostics list.
 
 ## E — Scripted map execution (in progress)
 
-Done: JASS parser + program model + VM + strict native dispatch; common.j/Blizzard.j loaded;
-target map initialization executes (14 units, 228 triggers, 16 timers, 8 frames, 6,437
-native calls); timer callbacks tested; per-map native dependency reports generated;
-68/265 extension natives bound.
+Done: JASS parser + VM + strict native dispatch; target map initialization executes;
+EXExecuteScript YDWE Lua bridge (persistent state, jass.slk subset); timer callbacks;
+chat command dispatch; runtime unit art resolution + client rendering; per-map dependency
+reports; 69/265 extension natives bound. Acceptance test passes on the real map.
+Data resolution now applies w3t/w3u before SLKs and TRIGSTR through wts; 120 s/300 s timer
+runs complete; engine chat-input dispatch test added.
 
-Remaining: native behavior for the gameplay/UI path (next blocker `EXExecuteScript`),
-trigger event dispatch beyond init, coroutines/sleep, then the first full playable scenario.
+Remaining: 196 extension natives, gameplay event producers for player-unit/unit/player/region/
+state/sync/YDWE input (dialog is complete), coroutine sleeps
+(unused by target map), Lua 5.3-vs-5.4 parity, two missing wts references, manual focused
+input test. Next renderer task remains cliff/ramp model accuracy and splat parity.
 
 ## F — Expanded compatibility
 

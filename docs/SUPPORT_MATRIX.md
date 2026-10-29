@@ -39,10 +39,18 @@ Fixture map: `C:/Users/admin/Downloads/Map Tong Hop v49.0 SS2.w3x` (HM3W, protec
 | JASS parser (War3Net) | Working | common.j + Blizzard.j + map (1.7 MB) parse in ~1.3 s |
 | JASS VM | Working | VM conformance tests; target map `main` executes |
 | Target map initialization | Working | 14 units, 228 triggers, 16 timers, 8 frames, 6,437 native calls |
-| YDWE native implementations | Partial | 68/265 bound; all 3 init-reachable implemented |
-| Timer callbacks | Working (tested) | one-shot + periodic against runtime state |
-| Trigger event dispatch | Partial | registration + init triggers + timer events; gameplay events not dispatched |
-| EXExecuteScript (Lua SLK query) | Missing | blocks timer-driven UI triggers |
+| YDWE native implementations | Partial | 69/265 bound; 463 implementations total |
+| Timer callbacks | Working (tested) | one-shot + periodic; 380 callbacks in 3 s map run |
+| EXExecuteScript / Lua bridge | Working (subset) | NLua/Lua 5.4, YDWE return-expr semantics, jass.slk SLK+object data |
+| Chat event dispatch | Working | map command `T5` sets udg_guaibs=5 + message; engine hotkey test |
+| Dialog event dispatch | Working | real UI click -> dialog trigger -> udg_yxms/message/nested trigger; 10 fixture tests |
+| Unit selection event | Working | owner-only UI pick / JASS SelectUnit -> EVENT_PLAYER_UNIT_SELECTED -> map trigger stores unit handle; player-unit + unit-scoped |
+| Runtime JASS units in client | Working | 14 units / 8 models rendered, 0 unresolved art |
+| TriggerSleepAction / coroutines | Not implemented | unused by target map |
+| Other events (orders/combat/spell/item/player/region/state/sync) | Registered only | 26 families, 1,800+ registrations, no producer |
+| Custom jass.slk data | Working (subset) | w3t/w3u before SLK; 3/3 queried object fields |
+| Trigger event dispatch | Partial | structured registrations + init/timer/chat/dialog/selection dispatch; other families registered only |
+
 | Text MDL models | Not supported | binary MDX only |
 | CASC / Reforged | Not started | — |
 

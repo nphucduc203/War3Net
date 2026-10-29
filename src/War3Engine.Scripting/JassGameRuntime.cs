@@ -1,3 +1,5 @@
+using War3Engine.Scripting.Lua;
+
 namespace War3Engine.Scripting;
 
 public sealed class HashtableState
@@ -33,8 +35,9 @@ public sealed class TriggerState
 {
     public List<JassValue> Actions { get; } = new();
     public List<JassValue> Conditions { get; } = new();
-    public List<string> Events { get; } = new();
+    public List<JassEventRegistration> Registrations { get; } = new();
     public bool Enabled { get; set; } = true;
+    public bool Destroyed { get; set; }
     public int Evaluations { get; set; }
     public JassHandle? Handle { get; set; }
 }
@@ -56,7 +59,7 @@ public sealed class TimerState
     public bool Destroyed { get; set; }
     public int HandleId { get; set; }
     public double FiredAtMs { get; set; }
-    public TriggerState? Trigger { get; set; }
+    public JassHandle? Handle { get; set; }
 }
 
 public sealed class UnitState
@@ -112,11 +115,22 @@ public sealed class LocationState
     public float Z { get; set; }
 }
 
+public sealed class DialogButtonState
+{
+    public required DialogState Dialog { get; init; }
+    public string Label { get; init; } = string.Empty;
+    public int Hotkey { get; init; }
+    public JassHandle? Handle { get; set; }
+}
+
 public sealed class DialogState
 {
     public string Message { get; set; } = string.Empty;
-    public List<JassHandle> Buttons { get; } = new();
+    public List<DialogButtonState> Buttons { get; } = new();
     public bool Visible { get; set; }
+    public int PlayerId { get; set; } = -1;
+    public bool Destroyed { get; set; }
+    public JassHandle? Handle { get; set; }
 }
 
 public sealed class FrameState
@@ -157,6 +171,33 @@ public sealed class DestructableState
     public float Z { get; set; }
     public float Life { get; set; } = 100f;
     public JassHandle? Handle { get; set; }
+}
+
+public sealed class MultiboardItemState
+{
+    public required MultiboardState Board { get; init; }
+    public int Row { get; init; }
+    public int Column { get; init; }
+    public string Value { get; set; } = string.Empty;
+    public string Icon { get; set; } = string.Empty;
+    public float Width { get; set; } = 0.03f;
+    public bool ShowValue { get; set; } = true;
+    public bool ShowIcon { get; set; }
+}
+
+public sealed class MultiboardState
+{
+    public string Title { get; set; } = string.Empty;
+    public int Rows { get; set; }
+    public int Columns { get; set; }
+    public bool Visible { get; set; }
+    public bool Minimized { get; set; }
+    public bool ShowValues { get; set; } = true;
+    public bool ShowIcons { get; set; }
+    public string ItemsValue { get; set; } = string.Empty;
+    public float ItemsWidth { get; set; } = 0.03f;
+    public string ItemsIcon { get; set; } = string.Empty;
+    public Dictionary<(int Row, int Column), MultiboardItemState> Items { get; } = new();
 }
 
 public sealed class SoundState
@@ -214,6 +255,8 @@ public sealed class JassGameRuntime
 
     public JassVirtualMachine? Vm { get; set; }
 
+    public IJassLua? Lua { get; set; }
+
     public List<UnitState> Units { get; } = new();
 
     public List<TriggerState> Triggers { get; } = new();
@@ -238,7 +281,32 @@ public sealed class JassGameRuntime
 
     public int InitTriggersFired { get; set; }
 
-    public TriggerState? CurrentTrigger { get; set; }
+    private readonly List<JassEventContext> _contexts = new();
+    private long _registrationSequence;
+
+    public JassEventContext? Context => _contexts.Count == 0 ? null : _contexts[^1];
+
+    public int EventDepth => _contexts.Count;
+
+    public List<JassEventRegistration> Registrations { get; } = new();
+
+    public List<DialogState> Dialogs { get; } = new();
+
+    private readonly Dictionary<int, List<UnitState>> _selection = new();
+
+    public IReadOnlyDictionary<int, List<UnitState>> Selection => _selection;
+
+    public List<string> DialogClicks { get; } = new();
+
+    public Dictionary<string, int> EventsRaised { get; } = new(StringComparer.Ordinal);
+
+    public int EventCallbacksSucceeded { get; private set; }
+
+    public int EventCallbacksFailed { get; private set; }
+
+    public List<string> EventFailures { get; } = new();
+
+    public int ChatEventsFired { get; set; }
 
     public TriggerState? UiTrigger { get; set; }
 
@@ -247,6 +315,10 @@ public sealed class JassGameRuntime
     public List<string> LoadedTocs { get; } = new();
 
     public List<string> SyncLog { get; } = new();
+
+    public List<string> DisplayMessages { get; } = new();
+
+    public bool MultiboardSuppressed { get; set; }
 
     public float[] CameraBounds { get; } = new float[8];
 
@@ -335,32 +407,164 @@ public sealed class JassGameRuntime
         return true;
     }
 
-    public void ExecuteTrigger(TriggerState trigger, bool checkConditions = false)
+    /// <summary>Runs the trigger in the current context; returns true when its actions ran.</summary>
+    public bool ExecuteTrigger(TriggerState trigger, bool checkConditions = false)
     {
-        if (!trigger.Enabled)
+        if (trigger.Destroyed || !trigger.Enabled)
         {
-            return;
+            return false;
         }
 
-        trigger.Evaluations++;
-        if (checkConditions && !EvaluateConditions(trigger))
+        var ownsContext = Context is null;
+        if (ownsContext)
         {
-            return;
+            _contexts.Add(new JassEventContext());
         }
 
-        var previous = CurrentTrigger;
-        CurrentTrigger = trigger;
+        var context = Context!;
+        var previousTrigger = context.Trigger;
+        context.Trigger = trigger;
         try
         {
+            trigger.Evaluations++;
+            if (checkConditions && !EvaluateConditions(trigger))
+            {
+                return false;
+            }
+
             foreach (var action in trigger.Actions)
             {
                 Vm!.InvokeCode(action);
             }
+
+            return true;
         }
         finally
         {
-            CurrentTrigger = previous;
+            context.Trigger = previousTrigger;
+            if (ownsContext)
+            {
+                PopContext(context);
+            }
         }
+    }
+
+    public JassEventRegistration Register(
+        TriggerState trigger,
+        string kind,
+        string function,
+        int eventId = -1,
+        int playerId = -1,
+        JassHandle? source = null,
+        JassValue filter = default,
+        string key = "",
+        bool exact = false)
+    {
+        var registration = new JassEventRegistration
+        {
+            Kind = kind,
+            Function = function,
+            EventId = eventId,
+            PlayerId = playerId,
+            Source = source,
+            Filter = filter,
+            Key = key,
+            Exact = exact,
+            Trigger = trigger,
+            Site = Vm?.CallerFunction ?? "<unknown>",
+            Chain = Vm?.CallerChain(3) ?? string.Empty,
+            Sequence = ++_registrationSequence,
+        };
+        trigger.Registrations.Add(registration);
+        Registrations.Add(registration);
+        return registration;
+    }
+
+    public void DestroyTrigger(TriggerState trigger)
+    {
+        trigger.Destroyed = true;
+        trigger.Enabled = false;
+        foreach (var registration in trigger.Registrations)
+        {
+            Registrations.Remove(registration);
+        }
+
+        trigger.Registrations.Clear();
+    }
+
+    /// <summary>Publishes typed events through matching registrations; returns actions executed.</summary>
+    public int Dispatch(Func<JassEventRegistration, JassEvent?> select, TimerState? expiredTimer = null)
+    {
+        var executed = 0;
+        foreach (var registration in Registrations.ToArray())
+        {
+            if (registration.Trigger.Destroyed || !registration.Trigger.Enabled)
+            {
+                continue;
+            }
+
+            var payload = select(registration);
+            if (payload is null)
+            {
+                continue;
+            }
+
+            var context = new JassEventContext { Event = payload, ExpiredTimer = expiredTimer };
+            _contexts.Add(context);
+            registration.Dispatches++;
+            try
+            {
+                if (registration.HasFilter && !EvaluateFilter(registration))
+                {
+                    continue;
+                }
+
+                ExecuteTrigger(registration.Trigger, checkConditions: true);
+                registration.Callbacks++;
+                EventCallbacksSucceeded++;
+                executed++;
+            }
+            catch
+            {
+                registration.Failures++;
+                EventCallbacksFailed++;
+                EventFailures.Add($"{payload.Kind}:{payload.EventId} in {registration.Function} at {registration.Site}");
+                throw;
+            }
+            finally
+            {
+                PopContext(context);
+            }
+        }
+
+        return executed;
+    }
+
+    private bool EvaluateFilter(JassEventRegistration registration)
+    {
+        if (registration.Filter.Handle?.State is not ConditionState condition)
+        {
+            throw new JassRuntimeException("event filter is not a condition handle");
+        }
+
+        var result = Vm!.InvokeCode(condition.Code);
+        return result.Kind == JassValueKind.Boolean && result.Boolean;
+    }
+
+    private void PopContext(JassEventContext context)
+    {
+        if (_contexts.Count == 0 || !ReferenceEquals(_contexts[^1], context))
+        {
+            throw new JassRuntimeException("event context stack corrupted");
+        }
+
+        _contexts.RemoveAt(_contexts.Count - 1);
+    }
+
+    private void RaiseEvent(string kind, int eventId)
+    {
+        var key = eventId < 0 ? kind : $"{kind}:{eventId}";
+        EventsRaised[key] = EventsRaised.TryGetValue(key, out var count) ? count + 1 : 1;
     }
 
     /// <summary>Runs timers due at the current time; returns the number of callbacks executed.</summary>
@@ -395,17 +599,233 @@ public sealed class JassGameRuntime
 
             executed++;
             TimerCallbacksFired++;
-            if (due.Trigger is not null)
+            RaiseEvent("timer", -1);
+            var timerEvent = new JassEvent { Kind = "timer" };
+            var timerContext = new JassEventContext { Event = timerEvent, ExpiredTimer = due };
+            _contexts.Add(timerContext);
+            try
             {
-                ExecuteTrigger(due.Trigger, checkConditions: true);
+                if (due.Handle is not null)
+                {
+                    Dispatch(
+                        registration => ReferenceEquals(registration.Source, due.Handle) &&
+                                        registration.Kind is "timer" or "timer-expire"
+                            ? timerEvent
+                            : null,
+                        due);
+                }
+
+                if (due.Callback.Kind == JassValueKind.Code)
+                {
+                    Vm!.InvokeCode(due.Callback);
+                }
             }
-            else if (due.Callback.Kind == JassValueKind.Code)
+            finally
             {
-                Vm!.InvokeCode(due.Callback);
+                PopContext(timerContext);
             }
         }
 
         throw new JassRuntimeException($"timer callbacks exceeded limit ({maxCallbacks})");
+    }
+
+    /// <summary>Dispatches a player chat message to registered chat triggers; returns fired count.</summary>
+    public int DispatchChat(int playerId, string message)
+    {
+        RaiseEvent("chat", 16);
+        var player = JassValue.FromHandle(Player(playerId));
+        var matchedTriggers = new HashSet<TriggerState>();
+        var fired = Dispatch(registration =>
+        {
+            if (registration.Kind != "chat" || registration.PlayerId != playerId)
+            {
+                return null;
+            }
+
+            var pattern = registration.Key;
+            // WC3 treats an empty match string as "any chat"; the map's command processor
+            // registers exactly this and parses commands from GetEventPlayerChatString.
+            var match = pattern.Length == 0 ||
+                        (registration.Exact
+                            ? string.Equals(message, pattern, StringComparison.Ordinal)
+                            : message.Contains(pattern, StringComparison.Ordinal));
+            if (!match || !matchedTriggers.Add(registration.Trigger))
+            {
+                return null;
+            }
+
+            return new JassEvent
+            {
+                Kind = "chat",
+                EventId = 16,
+                PlayerId = playerId,
+                Player = player,
+                ChatString = message,
+                ChatMatched = pattern,
+            };
+        });
+        ChatEventsFired += fired;
+        return fired;
+    }
+
+    /// <summary>Produces a dialog click event; the caller must have resolved the hit-test.</summary>
+    public int DispatchDialogClick(DialogState dialog, DialogButtonState button, int playerId)
+    {
+        if (dialog.Destroyed)
+        {
+            return 0;
+        }
+
+        RaiseEvent("dialog", -1);
+        dialog.Visible = false;
+        var payload = new JassEvent
+        {
+            Kind = "dialog",
+            PlayerId = playerId,
+            Player = JassValue.FromHandle(Player(playerId)),
+            ClickedButton = button.Handle is null ? JassValue.Null : JassValue.FromHandle(button.Handle),
+            ClickedDialog = dialog.Handle is null ? JassValue.Null : JassValue.FromHandle(dialog.Handle),
+        };
+        DialogClicks.Add($"dialog={dialog.Message} button={button.Label} player={playerId}");
+        return Dispatch(registration => registration.Kind switch
+        {
+            "dialog" when ReferenceEquals(registration.Source, dialog.Handle) => payload,
+            "dialog-button" when ReferenceEquals(registration.Source, button.Handle) => payload,
+            _ => null,
+        });
+    }
+
+    public IReadOnlyList<UnitState> SelectedUnits(int playerId) =>
+        _selection.TryGetValue(playerId, out var units) ? units : Array.Empty<UnitState>();
+
+    /// <summary>Adds (or removes) a unit for one player; the unit owner must match the selecting player.</summary>
+    public int SelectUnit(UnitState unit, int playerId, bool add)
+    {
+        if (unit.Removed || unit.Handle is null || unit.OwnerId != playerId)
+        {
+            return 0;
+        }
+
+        if (!add)
+        {
+            return DeselectUnit(unit, playerId);
+        }
+
+        if (!_selection.TryGetValue(playerId, out var units))
+        {
+            units = new List<UnitState>();
+            _selection[playerId] = units;
+        }
+
+        if (units.Contains(unit))
+        {
+            return 0;
+        }
+
+        units.Add(unit);
+        return RaiseSelection(unit, playerId, selected: true);
+    }
+
+    public int DeselectUnit(UnitState unit, int playerId)
+    {
+        if (!_selection.TryGetValue(playerId, out var units) || !units.Remove(unit))
+        {
+            return 0;
+        }
+
+        if (units.Count == 0)
+        {
+            _selection.Remove(playerId);
+        }
+
+        return RaiseSelection(unit, playerId, selected: false);
+    }
+
+    public int ClearSelection(int playerId)
+    {
+        if (!_selection.TryGetValue(playerId, out var units))
+        {
+            return 0;
+        }
+
+        var selected = units.ToArray();
+        _selection.Remove(playerId);
+        var fired = 0;
+        foreach (var unit in selected)
+        {
+            fired += RaiseSelection(unit, playerId, selected: false);
+        }
+
+        return fired;
+    }
+
+    /// <summary>UI single-click semantics: replace the player's selection with one unit.</summary>
+    public int SelectSingleUnit(UnitState unit, int playerId)
+    {
+        if (unit.Removed || unit.Handle is null || unit.OwnerId != playerId)
+        {
+            return 0;
+        }
+
+        var current = SelectedUnits(playerId);
+        if (current.Count == 1 && ReferenceEquals(current[0], unit))
+        {
+            return 0;
+        }
+
+        return ClearSelection(playerId) + SelectUnit(unit, playerId, add: true);
+    }
+
+    public void RemoveUnit(UnitState unit)
+    {
+        foreach (var player in _selection.Keys.ToArray())
+        {
+            var units = _selection[player];
+            units.Remove(unit);
+            if (units.Count == 0)
+            {
+                _selection.Remove(player);
+            }
+        }
+
+        unit.Removed = true;
+    }
+
+    private int RaiseSelection(UnitState unit, int playerId, bool selected)
+    {
+        if (unit.Handle is null)
+        {
+            return 0;
+        }
+
+        var unitValue = JassValue.FromHandle(unit.Handle);
+        var playerEventId = selected ? 24 : 25;
+        var unitEventId = selected ? 57 : 58;
+        var playerPayload = new JassEvent
+        {
+            Kind = "player-unit-event",
+            EventId = playerEventId,
+            PlayerId = playerId,
+            Player = JassValue.FromHandle(Player(playerId)),
+            TriggerUnit = unitValue,
+        };
+        RaiseEvent("player-unit-event", playerEventId);
+        var fired = Dispatch(registration =>
+            registration.Kind == "player-unit-event" &&
+            registration.EventId == playerEventId &&
+            registration.PlayerId == playerId
+                ? playerPayload
+                : null);
+
+        var unitPayload = playerPayload with { Kind = "unit-event", EventId = unitEventId };
+        RaiseEvent("unit-event", unitEventId);
+        fired += Dispatch(registration =>
+            registration.Kind == "unit-event" &&
+            registration.EventId == unitEventId &&
+            ReferenceEquals(registration.Source, unit.Handle)
+                ? unitPayload
+                : null);
+        return fired;
     }
 
     public void Advance(double milliseconds)

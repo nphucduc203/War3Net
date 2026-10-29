@@ -41,7 +41,7 @@
 | `DzSetUnitModel` | `takes unit whichUnit, string path returns nothing` | DzAPI | ydwe-dzapi | 13 | no | implemented | YDWETimerSystem:643 |
 | `EXGetEventDamageData` | `takes integer edd_type returns integer` | YDWE-JAPI | ydwe-japi | 13 | no | missing | YDWETimerSystem:856 |
 | `DzFrameFindByName` | `takes string name, integer id returns integer` | DzAPI | ydwe-dzapi | 12 | no | implemented | YDWETimerSystem:685 |
-| `EXExecuteScript` | `takes string script returns string` | YDWE-Extra | ydwe-extra | 12 | no | missing | YDWETimerSystem:871 |
+| `EXExecuteScript` | `takes string script returns string` | YDWE-Extra | ydwe-extra | 12 | no | implemented | YDWETimerSystem:871 |
 | `EXGetUnitAbility` | `takes unit u, integer abilcode returns ability` | YDWE-JAPI | ydwe-japi | 11 | no | missing | YDWETimerSystem:842 |
 | `DzAPI_Map_HasMallItem` | `takes player whichPlayer, string key returns boolean` | DzAPI | ydwe-dzapi | 9 | no | implemented | YDWETimerSystem:872 |
 | `DzSyncData` | `takes string prefix, string data returns nothing` | DzAPI | ydwe-dzapi | 9 | no | implemented | YDWETimerSystem:648 |
@@ -100,7 +100,7 @@ Callback names passed as strings (`ExecuteFunc`, trigger conditions) are not fol
 
 ## Status
 
-Implemented native bindings: 426 (standard + YDWE).
-Extension natives implemented: 68/265; missing: 197.
+Implemented native bindings: 433 (standard + YDWE).
+Extension natives implemented: 69/265; missing: 196.
 The machine-readable status file is the source for Phase B/C progress.
 Standard natives reachable from init that are implemented: Condition, CreateForce, CreateGroup, CreateRegion, CreateTimer, CreateTrigger, CreateUnit, DestroyGroup, DialogCreate, ExecuteFunc, Filter, GetCameraBoundMaxX, GetCameraBoundMaxY, GetCameraBoundMinX, GetCameraBoundMinY, GetCameraMargin, GetHandleId, GetWorldBounds, GroupEnumUnitsInRect, InitHashtable, NewSoundEnvironment, Player, Rect, RegionAddRect, SetCameraBounds, SetDayNightModels, SetMapMusic, SetWaterBaseColor, StringHash, TimerStart, TriggerAddAction, TriggerAddCondition, TriggerRegisterEnterRegion, TriggerRegisterLeaveRegion, TriggerRegisterPlayerChatEvent

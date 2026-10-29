@@ -5,6 +5,8 @@ using War3Engine.Assets;
 using War3Engine.Core;
 using War3Engine.Core.Map;
 using War3Engine.Core.Models;
+using War3Engine.Scripting;
+using War3Engine.Scripting.Lua;
 using War3Engine.Rendering;
 
 namespace War3Engine.Client;
@@ -30,6 +32,10 @@ public sealed class ViewerGame : Game
     private UiOverlay? _overlay;
     private KeyboardState _previousKeyboard;
     private readonly List<string> _mapUiLines = new();
+    private readonly List<(RenderModel Model, ModelInstance Instance, UnitState Unit)> _runtimeUnits = new();
+    private JassMapRunResult? _jass;
+    private JassGameRuntime? _jassRuntime;
+    private MapArtCache? _artCache;
     private MouseState _previousMouse;
     private bool _paused;
     private bool _finished;
@@ -140,7 +146,7 @@ public sealed class ViewerGame : Game
 
     private void LoadMap(AssetStore store, string mapPath)
     {
-        _scene = MapSceneLoader.Load(store, mapPath, _options.MaxInstances);
+        _scene = MapSceneLoader.Load(store, mapPath, _options.MaxInstances, includeUnits: !_options.RunJass);
         Console.WriteLine($"Map: {_scene.MapName}");
         Console.WriteLine($"  tileset={_scene.Tileset} terrainTiles={_scene.Terrain.TileCount} terrainTris={_scene.Terrain.Indices.Length / 3} textureGroups={_scene.Terrain.TextureGroups.Length}");
         Console.WriteLine($"  doodads={_scene.TotalDoodads} units={_scene.TotalUnits} placements={_scene.Placements.Length} unresolvedModels={_scene.UnresolvedModels}");
@@ -194,13 +200,21 @@ public sealed class ViewerGame : Game
         }
 
         Console.WriteLine($"  rendered instances: {_mapInstances.Count} (unique models {cache.Count})");
+        if (_options.RunJass)
+        {
+            RunJassScene(store, mapPath, cache);
+        }
         _mapUiLines.Add($"tileset {_scene.Tileset}  tiles {_scene.Terrain.TileCount}  tris {_scene.Terrain.Indices.Length / 3}");
         _mapUiLines.Add($"doodads {_scene.TotalDoodads}  units {_scene.TotalUnits}  visible {_mapInstances.Count}/{_scene.Placements.Length}");
         _mapUiLines.Add($"unique models {cache.Count}  unresolved {_scene.UnresolvedModels}  missing textures {_terrain.MissingTextures}");
         _mapUiLines.Add($"terrain textures {_scene.Terrain.TextureGroups.Length}  water tris {_terrain.WaterTriangleCount}");
 
         var bounds = _scene.Bounds;
-        var center = _options.Target is { } target ? War3Engine.Core.Wc3Space.Position(target) : bounds.Center;
+        var center = _options.Target is { } target
+            ? War3Engine.Core.Wc3Space.Position(target)
+            : _runtimeUnits.Count > 0
+                ? _camera.Target
+                : bounds.Center;
         var radius = MathF.Max((bounds.Maximum - bounds.Minimum).Length() * 0.5f, 500f);
         _camera.Target = center;
         _camera.Distance = radius * 2.2f;
@@ -209,6 +223,143 @@ public sealed class ViewerGame : Game
         if (_options.Distance is { } distance)
         {
             _camera.Distance = distance;
+        }
+    }
+
+    private void RunJassScene(AssetStore store, string mapPath, Dictionary<string, RenderModel> doodadCache)
+    {
+        var common = ReadText(store, @"Scripts\common.j");
+        var blizzard = ReadText(store, @"Scripts\Blizzard.j");
+        var map = ReadText(store, "war3map.j");
+        var slk = JassSlkQueryProvider.Load(store, mapPath);
+        var lua = new NLuaBridge(slk.Query);
+        var result = JassMapHost.Run(common, blizzard, map, 5_000_000, _options.AdvanceMs, lua: lua, chatMessage: _options.Chat);
+        _jass = result;
+        _jassRuntime = result.Runtime;
+        Console.WriteLine($"  jass: globals={result.GlobalsInitialized} main={result.MainCompleted} units={result.UnitsAlive} triggers={result.TriggerCount} timers={result.TimerCount} frames={result.FrameCount} callbacks={result.TimerCallbacks} chatFired={result.ChatFired}");
+        Console.WriteLine($"  jass lua: calls={lua.History.Count} errors={lua.History.Count(h => h.ErrorKind != LuaErrorKind.None)}");
+        foreach (var message in result.Runtime.DisplayMessages.Take(3))
+        {
+            Console.WriteLine($"  jass message: {message}");
+        }
+
+        if (result.Failure is UnsupportedNativeException unsupported)
+        {
+            Console.WriteLine($"  jass BLOCKED by native {unsupported.NativeName} ({unsupported.Signature})");
+            return;
+        }
+
+        if (result.Failure is not null)
+        {
+            Console.WriteLine($"  jass FAILURE: {result.Failure.Message}");
+            return;
+        }
+
+        if (_options.ClickDialog is { } clickIndex)
+        {
+            var dialog = result.Runtime.Dialogs.LastOrDefault(d =>
+                d.Visible && !d.Destroyed && d.PlayerId == 0 && d.Buttons.Count > clickIndex);
+            if (dialog is null)
+            {
+                Console.WriteLine("  jass dialog click: no visible dialog");
+            }
+            else
+            {
+                var fired = ViewerInput.DispatchDialogClick(result.Runtime, dialog, dialog.Buttons[clickIndex]);
+                Console.WriteLine($"  jass dialog click: button='{dialog.Buttons[clickIndex].Label}' fired={fired} messages={result.Runtime.DisplayMessages.Count}");
+            }
+        }
+
+        _artCache = MapArtCache.Load(store, mapPath);
+        var unresolved = 0;
+        var focusApplied = false;
+        var models = new Dictionary<string, RenderModel>(StringComparer.OrdinalIgnoreCase);
+        foreach (var unit in result.Runtime.Units.Where(u => !u.Removed))
+        {
+            var art = _artCache.ResolveUnit(unit.TypeId);
+            if (art is null)
+            {
+                unresolved++;
+                continue;
+            }
+
+            if (!models.TryGetValue(art.ModelPath, out var renderModel))
+            {
+                try
+                {
+                    var data = MdxModelLoader.Load(store, art.ModelPath);
+                    renderModel = new RenderModel(GraphicsDevice, data, LoadTexture);
+                    models[art.ModelPath] = renderModel;
+                    _ownedModels.Add(renderModel);
+                }
+                catch (Exception ex) when (ex is InvalidDataException or NotSupportedException)
+                {
+                    Console.WriteLine($"  unit model {art.ModelPath} SKIPPED: {ex.Message}");
+                    unresolved++;
+                    continue;
+                }
+            }
+
+            var z = _artCache.SampleHeight(unit.X, unit.Y) + unit.Z;
+            var world = System.Numerics.Matrix4x4.CreateScale(art.Scale)
+                        * System.Numerics.Matrix4x4.CreateRotationZ(unit.Facing)
+                        * System.Numerics.Matrix4x4.CreateTranslation(new System.Numerics.Vector3(unit.X, unit.Y, z));
+            var instance = new ModelInstance(renderModel.Data)
+            {
+                World = War3Engine.Core.Wc3Space.Transform(world),
+                SequenceTimeMs = _options.TimeMs,
+            };
+            var sequence = renderModel.Data.Sequences.FirstOrDefault(x => x.Name.StartsWith("stand", StringComparison.OrdinalIgnoreCase))
+                           ?? renderModel.Data.Sequences.FirstOrDefault();
+            if (sequence is not null)
+            {
+                instance.SequenceIndex = Array.IndexOf(renderModel.Data.Sequences, sequence);
+            }
+
+            _runtimeUnits.Add((renderModel, instance, unit));
+            var focus = _options.FocusType is null
+                ? _runtimeUnits.Count == 1
+                : string.Equals(Rawcode(unit.TypeId), _options.FocusType, StringComparison.OrdinalIgnoreCase);
+            if (_options.Target is null && focus && !focusApplied)
+            {
+                var center = System.Numerics.Vector3.Transform(renderModel.Data.Bounds.Center, instance.World);
+                var radius = MathF.Max(renderModel.Data.Bounds.Radius * art.Scale, 16f);
+                _camera.Target = center;
+                _camera.Distance = _options.Distance ?? MathF.Max(radius * 2.5f, 250f);
+                focusApplied = true;
+            }
+        }
+
+        Console.WriteLine($"  jass runtime units rendered={_runtimeUnits.Count} unresolved={unresolved} models={models.Count}");
+        if (_options.SelectUnit is { } selectedIndex && selectedIndex >= 0 && selectedIndex < _runtimeUnits.Count)
+        {
+            var selected = _runtimeUnits[selectedIndex].Unit;
+            var fired = ViewerInput.SelectUnit(result.Runtime, selected, selected.OwnerId);
+            Console.WriteLine($"  jass selection click: unit={Rawcode(selected.TypeId)} owner={selected.OwnerId} fired={fired} selected={result.Runtime.SelectedUnits(selected.OwnerId).Count}");
+        }
+
+        _mapUiLines.Add($"JASS: units {result.UnitsAlive} triggers {result.TriggerCount} timers {result.TimerCount} frames {result.FrameCount}");
+        _mapUiLines.Add($"JASS callbacks {result.TimerCallbacks} lua {lua.History.Count} chatFired {result.ChatFired} messages {result.Runtime.DisplayMessages.Count}");
+        _mapUiLines.Add($"JASS rendered {_runtimeUnits.Count} unresolvedArt {unresolved}");
+    }
+
+    private static string Rawcode(int value) => new(new[]
+    {
+        (char)(value & 0xFF),
+        (char)((value >> 8) & 0xFF),
+        (char)((value >> 16) & 0xFF),
+        (char)((value >> 24) & 0xFF),
+    });
+
+    private static string ReadText(AssetStore store, string path)
+    {
+        try
+        {
+            return System.Text.Encoding.UTF8.GetString(store.ReadAllBytes(path, out _));
+        }
+        catch (FileNotFoundException)
+        {
+            return string.Empty;
         }
     }
 
@@ -258,7 +409,46 @@ public sealed class ViewerGame : Game
         }
 
         var mouse = Mouse.GetState();
-        if (mouse.RightButton == ButtonState.Pressed || mouse.LeftButton == ButtonState.Pressed)
+        var leftClick = mouse.LeftButton == ButtonState.Pressed && _previousMouse.LeftButton == ButtonState.Released;
+        var uiClick = false;
+        if (leftClick && _overlay is not null && _jassRuntime is { } dialogRuntime &&
+            _overlay.TryHitDialog(mouse.Position, out var dialog, out var button))
+        {
+            uiClick = true;
+            try
+            {
+                var fired = ViewerInput.DispatchDialogClick(dialogRuntime, dialog, button);
+                Console.WriteLine($"dialog dispatch: fired={fired} button='{button.Label}' messages={dialogRuntime.DisplayMessages.Count}");
+            }
+            catch (JassRuntimeException ex)
+            {
+                Console.WriteLine($"dialog dispatch failed: {ex.Describe()}");
+                _jassRuntime = null;
+                _jass = null;
+            }
+        }
+
+        if (leftClick && !uiClick && _jassRuntime is { } selectionRuntime &&
+            TryPickUnit(mouse, out var picked))
+        {
+            uiClick = true;
+            if (picked.Unit.OwnerId == 0)
+            {
+                try
+                {
+                    var fired = ViewerInput.SelectUnit(selectionRuntime, picked.Unit);
+                    Console.WriteLine($"selection dispatch: unit={Rawcode(picked.Unit.TypeId)} fired={fired} selected={selectionRuntime.SelectedUnits(0).Count}");
+                }
+                catch (JassRuntimeException ex)
+                {
+                    Console.WriteLine($"selection dispatch failed: {ex.Describe()}");
+                    _jassRuntime = null;
+                    _jass = null;
+                }
+            }
+        }
+
+        if (!uiClick && (mouse.RightButton == ButtonState.Pressed || mouse.LeftButton == ButtonState.Pressed))
         {
             _camera.Orbit(mouse.X - _previousMouse.X, mouse.Y - _previousMouse.Y);
         }
@@ -275,6 +465,25 @@ public sealed class ViewerGame : Game
         if (keyboard.IsKeyDown(Keys.Space) && !_previousKeyboard.IsKeyDown(Keys.Space))
         {
             _paused = !_paused;
+        }
+
+        if (keyboard.IsKeyDown(Keys.F5) && !_previousKeyboard.IsKeyDown(Keys.F5) && _jassRuntime is { } chatRuntime)
+        {
+            try
+            {
+                var fired = ViewerInput.DispatchChatHotkey(chatRuntime, _options.Chat);
+                Console.WriteLine($"chat dispatch: fired={fired} messages={chatRuntime.DisplayMessages.Count}");
+                if (_jass is { } jassResult && jassResult.Vm.TryGetGlobalValue("udg_guaibs", out var wave))
+                {
+                    Console.WriteLine($"  udg_guaibs={wave}");
+                }
+            }
+            catch (JassRuntimeException ex)
+            {
+                Console.WriteLine($"chat dispatch failed: {ex.Describe()}");
+                _jassRuntime = null;
+                _jass = null;
+            }
         }
 
         if (keyboard.IsKeyDown(Keys.OemOpenBrackets) && !_previousKeyboard.IsKeyDown(Keys.OemOpenBrackets))
@@ -306,6 +515,22 @@ public sealed class ViewerGame : Game
             foreach (var (_, instance) in _mapInstances)
             {
                 instance.Advance(gameTime.ElapsedGameTime.TotalSeconds);
+            }
+
+            if (_jassRuntime is { } jass)
+            {
+                try
+                {
+                    jass.Advance(gameTime.ElapsedGameTime.TotalSeconds * 1000.0);
+                    jass.RunDueTimers();
+                    SyncRuntimeUnits();
+                }
+                catch (JassRuntimeException ex)
+                {
+                    Console.WriteLine($"jass update stopped: {ex.Describe()}");
+                    _jassRuntime = null;
+                    _jass = null;
+                }
             }
         }
 
@@ -373,6 +598,81 @@ public sealed class ViewerGame : Game
         Console.WriteLine($"  screenshot: {path} ({_options.Width}x{_options.Height}) draws={_stats.DrawCalls} triangles={_stats.Triangles}");
     }
 
+    private void SyncRuntimeUnits()
+    {
+        if (_artCache is null)
+        {
+            return;
+        }
+
+        foreach (var (_, instance, unit) in _runtimeUnits)
+        {
+            var z = _artCache.SampleHeight(unit.X, unit.Y) + unit.Z;
+            var world = System.Numerics.Matrix4x4.CreateScale(1f)
+                        * System.Numerics.Matrix4x4.CreateRotationZ(unit.Facing)
+                        * System.Numerics.Matrix4x4.CreateTranslation(new System.Numerics.Vector3(unit.X, unit.Y, z));
+            instance.World = War3Engine.Core.Wc3Space.Transform(world);
+            instance.Advance(1.0 / 60.0);
+        }
+    }
+
+    private bool TryPickUnit(MouseState mouse, out (RenderModel Model, ModelInstance Instance, UnitState Unit) hit)
+    {
+        hit = default;
+        var best = 45f;
+        var viewport = GraphicsDevice.Viewport;
+        foreach (var entry in _runtimeUnits)
+        {
+            var projected = viewport.Project(entry.Instance.World.Translation, _camera.Projection, _camera.View, Matrix.Identity);
+            if (projected.Z < 0f || projected.Z > 1f)
+            {
+                continue;
+            }
+
+            var dx = projected.X - mouse.X;
+            var dy = projected.Y - mouse.Y;
+            var distance = MathF.Sqrt((dx * dx) + (dy * dy));
+            if (distance >= best)
+            {
+                continue;
+            }
+
+            best = distance;
+            hit = entry;
+        }
+
+        return best < 45f;
+    }
+
+    private void DrawSelectionMarkers()
+    {
+        if (_overlay is null || _jassRuntime is not { } runtime)
+        {
+            return;
+        }
+
+        var viewport = GraphicsDevice.Viewport;
+        foreach (var (player, units) in runtime.Selection)
+        {
+            foreach (var unit in units)
+            {
+                foreach (var (_, instance, candidate) in _runtimeUnits)
+                {
+                    if (!ReferenceEquals(candidate, unit))
+                    {
+                        continue;
+                    }
+
+                    var projected = viewport.Project(instance.World.Translation, _camera.Projection, _camera.View, Matrix.Identity);
+                    if (projected.Z is >= 0f and <= 1f)
+                    {
+                        _overlay.DrawSelection(new Point((int)projected.X, (int)projected.Y), $"{Rawcode(unit.TypeId)} P{player}");
+                    }
+                }
+            }
+        }
+    }
+
     private void CycleAnimation(int direction)
     {
         if (_instance is null || _instance.Model.Sequences.Length == 0)
@@ -394,7 +694,30 @@ public sealed class ViewerGame : Game
 
         if (_scene is not null)
         {
-            _overlay.DrawMap($"Map: {_scene.MapName}", _mapUiLines);
+            var lines = new List<string>(_mapUiLines);
+            if (_jassRuntime is { } runtime)
+            {
+                foreach (var (player, units) in runtime.Selection)
+                {
+                    foreach (var unit in units)
+                    {
+                        lines.Add($"selected P{player} {Rawcode(unit.TypeId)} hp {unit.Hp:F0}/{unit.MaxHp:F0} @{unit.X:F0},{unit.Y:F0}");
+                    }
+                }
+
+                if (runtime.DisplayMessages.Count > 0)
+                {
+                    lines.Add(string.Empty);
+                    foreach (var message in runtime.DisplayMessages.TakeLast(4))
+                    {
+                        lines.Add("> " + (message.Length > 96 ? message[..96] : message));
+                    }
+                }
+            }
+
+            _overlay.DrawMap($"Map: {_scene.MapName}", lines);
+            _overlay.DrawDialog(_jassRuntime, mouse, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height);
+            DrawSelectionMarkers();
             return;
         }
 
@@ -433,6 +756,11 @@ public sealed class ViewerGame : Game
         {
             _terrain?.Draw(view, projection);
             foreach (var (model, instance) in _mapInstances)
+            {
+                _renderer.Draw(model, instance, view, projection, _stats);
+            }
+
+            foreach (var (model, instance, _) in _runtimeUnits)
             {
                 _renderer.Draw(model, instance, view, projection, _stats);
             }

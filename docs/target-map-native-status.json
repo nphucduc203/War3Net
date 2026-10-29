@@ -3254,7 +3254,7 @@
       "initReachable": false,
       "section": "YDWETimerSystem",
       "line": 871,
-      "status": "missing"
+      "status": "implemented"
     },
     {
       "name": "EXGetAbilityDataInteger",

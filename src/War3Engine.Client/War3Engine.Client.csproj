@@ -12,6 +12,7 @@
     <ProjectReference Include="..\War3Engine.Core\War3Engine.Core.csproj" />
     <ProjectReference Include="..\War3Engine.Assets\War3Engine.Assets.csproj" />
     <ProjectReference Include="..\War3Engine.Rendering\War3Engine.Rendering.csproj" />
+    <ProjectReference Include="..\War3Engine.Scripting\War3Engine.Scripting.csproj" />
   </ItemGroup>
 
   <ItemGroup>

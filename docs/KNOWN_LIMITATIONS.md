@@ -37,17 +37,36 @@
 
 ## JASS runtime
 
-- Target map initialization completes, but gameplay is not runnable yet: timer advancement
-  hits `EXExecuteScript` (Lua `jass.slk` queries) in UI trigger actions.
-- Only 68 of the map's 265 declared extension natives are implemented; missing natives are
-  reported loudly, never stubbed silently. All three extension natives reachable from the
-  static init path are implemented.
-- Trigger event dispatch is limited to initialization triggers and timer expiry; mouse,
-  chat, unit and dialog events are registered but not dispatched.
-- Coroutines/`TriggerSleepAction`, precise handle-type inheritance, and source line numbers
-  are not implemented. Debug blocks are skipped by default.
-- Runtime units/triggers/timers are simulation state only; they are not yet rendered by the
-  client.
+- The verified scenario (init, timers, EXExecuteScript, chat `T5`, runtime unit rendering)
+  works. Only 69 of the map's 265 declared extension natives are implemented; other
+  gameplay paths may fail and are reported loudly.
+- `EXExecuteScript` uses NLua/Lua 5.4 while YDWE 1.2.9C ships Lua 5.3.6 (luacore.dll is
+  32-bit). Numeric/string conformance tests cover 2 vs 2.0, //, %, precision, string.format,
+  tonumber, 64-bit wrap and locale; a bit-identical 5.3.6 runtime is not embedded.
+- `jass.slk` resolves map object data (w3t/w3u) before base SLKs and resolves TRIGSTR via
+  war3map.wts. Two references used by the map (TRIGSTR_000/002) are missing from wts and
+  stay literal; Ubertip falls back to utub then utip. Fields outside the verified set return nil.
+- Trigger event dispatch covers initialization triggers, timer expiry, player chat, dialog
+  clicks and unit selection/deselection (player-unit 24/25 and unit-scoped 57/58). Selection is
+  owner-only and drives the map's selection trigger, which stores the unit handle in the map
+  hashtable. The remaining 26 registered families (orders, attack/damage/death, spells, items,
+  player/region/state/sync/YDWE key/mouse, 1,800+ registrations) have no event producer yet;
+  they are registered only and listed in `docs/event-dispatch-coverage.json` with their missing
+  response natives.
+- Dialog clicks and unit picking are produced by real mouse hit-tests in the viewer, but
+  automated scenarios use the engine input adapter; OS-level mouse input has not been automated.
+  Manual procedure: `docs/event-dispatch-roadmap.md` section 7. The target map has no player-0
+  units at startup, so the deterministic selection screenshot selects an owner-8 unit via
+  `--select-unit`; a player-0 click works once gameplay spawns a player-0 unit.
+- The F5 chat hotkey is verified at the engine input-dispatch layer by a deterministic test;
+  OS-level key injection could not be automated because Windows foreground locking prevented
+  focusing the background game window. Manual focused-window testing is still required.
+- `TriggerSleepAction`/`PolledWait` are not implemented (the target map does not use them).
+- Runtime units are rendered in their stand pose at the current position/facing; unit
+  animations tied to game state, effects and UI frames are state-only.
+- Automated OS-level key injection into the game window failed due to foreground locking in
+  the test sandbox; F5 chat dispatch is implemented but the actual key press still needs
+  manual verification.
 
 ## Compatibility / UI
 

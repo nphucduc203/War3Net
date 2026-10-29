@@ -28,6 +28,20 @@ public static class RuntimeNatives
                 sideEffects));
         }
 
+        JassValue Event(
+            JassValue triggerValue,
+            string kind,
+            string function,
+            int eventId = -1,
+            int playerId = -1,
+            JassHandle? source = null,
+            JassValue filter = default,
+            string key = "")
+        {
+            runtime.Register(State<TriggerState>(triggerValue, "trigger"), kind, function, eventId, playerId, source, filter, key);
+            return JassValue.Null;
+        }
+
         Auto("CreateSound", (_, a) => Sound(a, a[0].Text), "Creates a sound handle; playback is headless.");
         Auto("CreateSoundFromLabel", (_, a) => Sound(a, a[0].Text), "Creates a sound handle; playback is headless.");
         Auto("CreateMIDISound", (_, a) => Sound(a, a[0].Text), "Creates a sound handle; playback is headless.");
@@ -72,16 +86,181 @@ public static class RuntimeNatives
             return JassValue.Null;
         });
         Auto("GetFilterPlayer", (_, _) => runtime.EnumPlayer);
-        Auto("TriggerRegisterTimerExpireEvent", (_, a) =>
+        Auto("IsPlayerInForce", (_, a) => JassValue.FromBoolean(State<ForceState>(a[1], "force").Players.Contains(PlayerId(a[0]))));
+        Auto("IsUnitInForce", (_, _) => JassValue.FromBoolean(false));
+        Auto("GroupEnumUnitsOfPlayer", (vm, a) =>
         {
-            var trigger = State<TriggerState>(a[0], "trigger");
-            var timer = State<TimerState>(a[1], "timer");
-            timer.Trigger = trigger;
+            var group = State<GroupState>(a[0], "group");
+            var player = PlayerId(a[1]);
+            var filter = a[2].IsNull ? null : State<ConditionState>(a[2], "boolexpr");
+            foreach (var unit in runtime.Units.Where(u => !u.Removed && u.OwnerId == player).ToArray())
+            {
+                if (unit.Handle is null)
+                {
+                    continue;
+                }
+
+                if (filter is not null)
+                {
+                    runtime.FilterUnit = JassValue.FromHandle(unit.Handle);
+                    var result = vm.InvokeCode(filter.Code);
+                    if (result.Kind != JassValueKind.Boolean || !result.Boolean)
+                    {
+                        continue;
+                    }
+                }
+
+                group.Units.Add(unit.Handle);
+            }
+
+            runtime.FilterUnit = JassValue.Null;
             return JassValue.Null;
         });
-        Auto("GetTriggeringTrigger", (_, _) => runtime.CurrentTrigger?.Handle is { } h ? JassValue.FromHandle(h) : JassValue.Null);
-        Auto("GetTriggerPlayer", (_, _) => JassValue.FromHandle(runtime.Player(0)));
-        Auto("GetEventPlayerChatString", (_, _) => JassValue.FromString(string.Empty));
+        Auto("GroupEnumUnitsInRange", (vm, a) =>
+        {
+            var group = State<GroupState>(a[0], "group");
+            var x = a[1].Real;
+            var y = a[2].Real;
+            var radius = a[3].Real;
+            var filter = a[4].IsNull ? null : State<ConditionState>(a[4], "boolexpr");
+            foreach (var unit in runtime.Units.Where(u => !u.Removed).ToArray())
+            {
+                var dx = unit.X - x;
+                var dy = unit.Y - y;
+                if ((dx * dx) + (dy * dy) > radius * radius || unit.Handle is null)
+                {
+                    continue;
+                }
+
+                if (filter is not null)
+                {
+                    runtime.FilterUnit = JassValue.FromHandle(unit.Handle);
+                    var result = vm.InvokeCode(filter.Code);
+                    if (result.Kind != JassValueKind.Boolean || !result.Boolean)
+                    {
+                        continue;
+                    }
+                }
+
+                group.Units.Add(unit.Handle);
+            }
+
+            runtime.FilterUnit = JassValue.Null;
+            return JassValue.Null;
+        });
+        Auto("GroupEnumUnitsInRangeOfLoc", (vm, a) =>
+        {
+            var group = State<GroupState>(a[0], "group");
+            var loc = State<LocationState>(a[1], "location");
+            var radius = a[2].Real;
+            var filter = a[3].IsNull ? null : State<ConditionState>(a[3], "boolexpr");
+            foreach (var unit in runtime.Units.Where(u => !u.Removed).ToArray())
+            {
+                var dx = unit.X - loc.X;
+                var dy = unit.Y - loc.Y;
+                if ((dx * dx) + (dy * dy) > radius * radius || unit.Handle is null)
+                {
+                    continue;
+                }
+
+                if (filter is not null)
+                {
+                    runtime.FilterUnit = JassValue.FromHandle(unit.Handle);
+                    var result = vm.InvokeCode(filter.Code);
+                    if (result.Kind != JassValueKind.Boolean || !result.Boolean)
+                    {
+                        continue;
+                    }
+                }
+
+                group.Units.Add(unit.Handle);
+            }
+
+            runtime.FilterUnit = JassValue.Null;
+            return JassValue.Null;
+        });
+        Auto("GroupEnumUnitsOfType", (vm, a) =>
+        {
+            var group = State<GroupState>(a[0], "group");
+            var typeId = a[1].Integer;
+            var filter = a[2].IsNull ? null : State<ConditionState>(a[2], "boolexpr");
+            foreach (var unit in runtime.Units.Where(u => !u.Removed && u.TypeId == typeId).ToArray())
+            {
+                if (unit.Handle is null)
+                {
+                    continue;
+                }
+
+                if (filter is not null)
+                {
+                    runtime.FilterUnit = JassValue.FromHandle(unit.Handle);
+                    var result = vm.InvokeCode(filter.Code);
+                    if (result.Kind != JassValueKind.Boolean || !result.Boolean)
+                    {
+                        continue;
+                    }
+                }
+
+                group.Units.Add(unit.Handle);
+            }
+
+            runtime.FilterUnit = JassValue.Null;
+            return JassValue.Null;
+        });
+        Auto("CountUnitsInGroup", (_, a) => JassValue.FromInteger(State<GroupState>(a[0], "group").Units.Count));
+        Auto("IsUnitInGroup", (_, a) => JassValue.FromBoolean(State<GroupState>(a[1], "group").Units.Contains(a[0].Handle!)));
+        Auto("GroupPickRandomUnit", (_, a) =>
+        {
+            var units = State<GroupState>(a[0], "group").Units;
+            return units.Count == 0 ? JassValue.Null : JassValue.FromHandle(units[Random.Shared.Next(units.Count)]);
+        });
+        Auto("CreateMultiboard", (_, _) => JassValue.FromHandle(new JassHandle("multiboard", new MultiboardState())));
+        Auto("DestroyMultiboard", (_, a) => { Multi(a[0]).Items.Clear(); return JassValue.Null; });
+        Auto("MultiboardDisplay", (_, a) => { Multi(a[0]).Visible = a[1].Boolean; return JassValue.Null; });
+        Auto("MultiboardMinimize", (_, a) => { Multi(a[0]).Minimized = a[1].Boolean; return JassValue.Null; });
+        Auto("MultiboardClear", (_, a) => { Multi(a[0]).Items.Clear(); return JassValue.Null; });
+        Auto("MultiboardSetTitleText", (_, a) => { Multi(a[0]).Title = a[1].Text ?? string.Empty; return JassValue.Null; });
+        Auto("MultiboardGetTitleText", (_, a) => JassValue.FromString(Multi(a[0]).Title));
+        Auto("MultiboardSetTitleTextColor", (_, _) => JassValue.Null);
+        Auto("MultiboardGetRowCount", (_, a) => JassValue.FromInteger(Multi(a[0]).Rows));
+        Auto("MultiboardGetColumnCount", (_, a) => JassValue.FromInteger(Multi(a[0]).Columns));
+        Auto("MultiboardSetColumnCount", (_, a) => { Multi(a[0]).Columns = a[1].Integer; return JassValue.Null; });
+        Auto("MultiboardSetRowCount", (_, a) => { Multi(a[0]).Rows = a[1].Integer; return JassValue.Null; });
+        Auto("MultiboardSetItemsStyle", (_, a) => { var m = Multi(a[0]); m.ShowValues = a[1].Boolean; m.ShowIcons = a[2].Boolean; return JassValue.Null; });
+        Auto("MultiboardSetItemsValue", (_, a) => { Multi(a[0]).ItemsValue = a[1].Text ?? string.Empty; return JassValue.Null; });
+        Auto("MultiboardSetItemsValueColor", (_, _) => JassValue.Null);
+        Auto("MultiboardSetItemsWidth", (_, a) => { Multi(a[0]).ItemsWidth = a[1].Real; return JassValue.Null; });
+        Auto("MultiboardSetItemsIcon", (_, a) => { Multi(a[0]).ItemsIcon = a[1].Text ?? string.Empty; return JassValue.Null; });
+        Auto("MultiboardGetItem", (_, a) =>
+        {
+            var board = Multi(a[0]);
+            var key = (a[1].Integer, a[2].Integer);
+            if (!board.Items.TryGetValue(key, out var item))
+            {
+                item = new MultiboardItemState { Board = board, Row = key.Item1, Column = key.Item2 };
+                board.Items[key] = item;
+            }
+
+            return JassValue.FromHandle(new JassHandle("multiboarditem", item));
+        });
+        Auto("MultiboardReleaseItem", (_, _) => JassValue.Null);
+        Auto("MultiboardSetItemStyle", (_, a) => { var i = MultiItem(a[0]); i.ShowValue = a[1].Boolean; i.ShowIcon = a[2].Boolean; return JassValue.Null; });
+        Auto("MultiboardSetItemValue", (_, a) => { MultiItem(a[0]).Value = a[1].Text ?? string.Empty; return JassValue.Null; });
+        Auto("MultiboardSetItemValueColor", (_, _) => JassValue.Null);
+        Auto("MultiboardSetItemWidth", (_, a) => { MultiItem(a[0]).Width = a[1].Real; return JassValue.Null; });
+        Auto("MultiboardSetItemIcon", (_, a) => { MultiItem(a[0]).Icon = a[1].Text ?? string.Empty; return JassValue.Null; });
+        Auto("MultiboardSuppressDisplay", (_, a) => { runtime.MultiboardSuppressed = a[0].Boolean; return JassValue.Null; });
+        Auto("DisplayTextToPlayer", (_, a) => { runtime.DisplayMessages.Add(a.Length > 3 ? a[3].Text ?? string.Empty : string.Empty); return JassValue.Null; });
+        Auto("DisplayTimedTextToPlayer", (_, a) => { runtime.DisplayMessages.Add(a.Length > 4 ? a[4].Text ?? string.Empty : string.Empty); return JassValue.Null; });
+        Auto("DisplayTimedTextToForce", (_, a) => { runtime.DisplayMessages.Add(a.Length > 2 ? a[2].Text ?? string.Empty : string.Empty); return JassValue.Null; });
+        Auto("DisplayTextToForce", (_, a) => { runtime.DisplayMessages.Add(a.Length > 1 ? a[1].Text ?? string.Empty : string.Empty); return JassValue.Null; });
+        Auto("GetTriggeringTrigger", (_, _) => runtime.Context?.Trigger?.Handle is { } h ? JassValue.FromHandle(h) : JassValue.Null);
+        Auto("GetExpiredTimer", (_, _) => runtime.Context?.ExpiredTimer?.Handle is { } t ? JassValue.FromHandle(t) : JassValue.Null);
+        Auto("GetTriggerPlayer", (_, _) => runtime.Context?.Event.Player ?? JassValue.Null);
+        Auto("GetEventPlayerChatString", (_, _) => JassValue.FromString(runtime.Context?.Event.ChatString ?? string.Empty));
+        Auto("GetEventPlayerChatStringMatched", (_, _) => JassValue.FromString(runtime.Context?.Event.ChatMatched ?? string.Empty));
+        Auto("GetClickedButton", (_, _) => runtime.Context?.Event.ClickedButton ?? JassValue.Null);
+        Auto("GetClickedDialog", (_, _) => runtime.Context?.Event.ClickedDialog ?? JassValue.Null);
         Auto("GetPlayerUnitTypeCount", (_, _) => JassValue.FromInteger(0));
         Auto("GetUnitUserData", (_, _) => JassValue.FromInteger(0));
         Auto("SetUnitUserData", (_, _) => JassValue.Null);
@@ -118,20 +297,20 @@ public static class RuntimeNatives
         Auto("SetSoundDuration", (_, _) => JassValue.Null);
         Auto("AttachSoundToUnit", (_, _) => JassValue.Null);
         Auto("SetSoundParams", (_, _) => JassValue.Null);
-        Auto("TriggerRegisterGameStateEvent", (_, a) => Event(a[0], $"game-state:{EnumId(a[1])}:{EnumId(a[2])}:{a[3].Real}"));
-        Auto("TriggerRegisterGameEvent", (_, a) => Event(a[0], $"game-event:{EnumId(a[1])}"));
-        Auto("TriggerRegisterPlayerAllianceChange", (_, a) => Event(a[0], $"alliance:{PlayerId(a[1])}:{EnumId(a[2])}"));
-        Auto("TriggerRegisterPlayerStateEvent", (_, a) => Event(a[0], $"player-state:{PlayerId(a[1])}:{EnumId(a[2])}:{EnumId(a[3])}:{a[4].Real}"));
-        Auto("TriggerRegisterUnitStateEvent", (_, a) => Event(a[0], $"unit-state:{EnumId(a[2])}:{EnumId(a[3])}:{a[4].Real}"));
-        Auto("TriggerRegisterUnitEvent", (_, a) => Event(a[0], $"unit-event:{EnumId(a[2])}"));
-        Auto("TriggerRegisterDeathEvent", (_, a) => Event(a[0], "death"));
-        Auto("TriggerRegisterDialogEvent", (_, a) => Event(a[0], "dialog"));
-        Auto("TriggerRegisterDialogButtonEvent", (_, a) => Event(a[0], "dialog-button"));
-        Auto("TriggerRegisterCommandEvent", (_, a) => Event(a[0], $"command:{a[2].Integer}"));
-        Auto("TriggerRegisterUpgradeCommandEvent", (_, a) => Event(a[0], $"upgrade-command:{a[2].Integer}"));
-        Auto("TriggerRegisterTrackableHitEvent", (_, a) => Event(a[0], "trackable-hit"));
-        Auto("TriggerRegisterTrackableTrackEvent", (_, a) => Event(a[0], "trackable-track"));
-        Auto("TriggerRegisterVariableEvent", (_, a) => Event(a[0], $"variable:{a[0].Text}"));
+        Auto("TriggerRegisterGameStateEvent", (_, a) => Event(a[0], "game-state", "TriggerRegisterGameStateEvent", EnumId(a[1]), key: $"{EnumId(a[2])}:{a[3].Real}"));
+        Auto("TriggerRegisterGameEvent", (_, a) => Event(a[0], "game-event", "TriggerRegisterGameEvent", EnumId(a[1])));
+        Auto("TriggerRegisterPlayerAllianceChange", (_, a) => Event(a[0], "alliance", "TriggerRegisterPlayerAllianceChange", EnumId(a[2]), PlayerId(a[1])));
+        Auto("TriggerRegisterPlayerStateEvent", (_, a) => Event(a[0], "player-state", "TriggerRegisterPlayerStateEvent", EnumId(a[2]), PlayerId(a[1]), key: $"{EnumId(a[3])}:{a[4].Real}"));
+        Auto("TriggerRegisterUnitStateEvent", (_, a) => Event(a[0], "unit-state", "TriggerRegisterUnitStateEvent", EnumId(a[2]), source: a[1].Handle, key: $"{EnumId(a[3])}:{a[4].Real}"));
+        Auto("TriggerRegisterUnitEvent", (_, a) => Event(a[0], "unit-event", "TriggerRegisterUnitEvent", EnumId(a[2]), source: a[1].Handle));
+        Auto("TriggerRegisterDeathEvent", (_, a) => Event(a[0], "death", "TriggerRegisterDeathEvent", source: a[1].Handle));
+        Auto("TriggerRegisterDialogEvent", (_, a) => Event(a[0], "dialog", "TriggerRegisterDialogEvent", source: a[1].Handle));
+        Auto("TriggerRegisterDialogButtonEvent", (_, a) => Event(a[0], "dialog-button", "TriggerRegisterDialogButtonEvent", source: a[1].Handle));
+        Auto("TriggerRegisterCommandEvent", (_, a) => Event(a[0], "command", "TriggerRegisterCommandEvent", a[2].Integer, source: a[1].Handle));
+        Auto("TriggerRegisterUpgradeCommandEvent", (_, a) => Event(a[0], "upgrade-command", "TriggerRegisterUpgradeCommandEvent", a[2].Integer, source: a[1].Handle));
+        Auto("TriggerRegisterTrackableHitEvent", (_, a) => Event(a[0], "trackable-hit", "TriggerRegisterTrackableHitEvent", source: a[1].Handle));
+        Auto("TriggerRegisterTrackableTrackEvent", (_, a) => Event(a[0], "trackable-track", "TriggerRegisterTrackableTrackEvent", source: a[1].Handle));
+        Auto("TriggerRegisterVariableEvent", (_, a) => Event(a[0], "variable", "TriggerRegisterVariableEvent", key: $"{a[1].Text}:{EnumId(a[2])}:{a[3].Real}"));
         Auto("GetFloatGameState", (_, a) =>
         {
             var state = EnumId(a[0]);
@@ -187,8 +366,8 @@ public static class RuntimeNatives
         Auto("R2I", (_, a) => JassValue.FromInteger((int)a[0].Real));
         Auto("I2S", (_, a) => JassValue.FromString(a[0].Integer.ToString(System.Globalization.CultureInfo.InvariantCulture)));
         Auto("R2S", (_, a) => JassValue.FromString(a[0].Real.ToString(System.Globalization.CultureInfo.InvariantCulture)));
-        Auto("S2I", (_, a) => JassValue.FromInteger(int.TryParse(a[0].Text, out var i) ? i : 0));
-        Auto("S2R", (_, a) => JassValue.FromReal(float.TryParse(a[0].Text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var r) ? r : 0f));
+        Auto("S2I", (_, a) => JassValue.FromInteger(ParseLeadingInt(a[0].Text)));
+        Auto("S2R", (_, a) => JassValue.FromReal(ParseLeadingFloat(a[0].Text)));
         Auto("B2S", (_, a) => JassValue.FromString(a[0].Boolean ? "true" : "false"));
         Auto("S2B", (_, a) => JassValue.FromBoolean(string.Equals(a[0].Text, "true", StringComparison.OrdinalIgnoreCase)));
         Auto("StringLength", (_, a) => JassValue.FromInteger(a[0].Text?.Length ?? 0));
@@ -212,19 +391,22 @@ public static class RuntimeNatives
         Auto("SetRandomSeed", (_, _) => JassValue.Null);
         Auto("GetUnitName", (_, _) => JassValue.FromString("unit"));
         Auto("GetUnitPointValue", (_, _) => JassValue.FromInteger(0));
-        Auto("GetTriggerUnit", (_, _) => JassValue.Null);
-        Auto("GetDyingUnit", (_, _) => JassValue.Null);
-        Auto("GetKillingUnit", (_, _) => JassValue.Null);
-        Auto("GetAttacker", (_, _) => JassValue.Null);
-        Auto("GetEventDamageSource", (_, _) => JassValue.Null);
-        Auto("GetEventDamage", (_, _) => JassValue.FromReal(0f));
-        Auto("GetSpellAbilityUnit", (_, _) => JassValue.Null);
-        Auto("GetSpellAbilityId", (_, _) => JassValue.FromInteger(0));
-        Auto("GetSpellTargetUnit", (_, _) => JassValue.Null);
-        Auto("GetSpellTargetX", (_, _) => JassValue.FromReal(0f));
-        Auto("GetSpellTargetY", (_, _) => JassValue.FromReal(0f));
-        Auto("GetOrderedUnit", (_, _) => JassValue.Null);
-        Auto("GetOrderTargetUnit", (_, _) => JassValue.Null);
+        Auto("GetTriggerUnit", (_, _) => runtime.Context?.Event.TriggerUnit ?? JassValue.Null);
+        Auto("GetDyingUnit", (_, _) => runtime.Context?.Event.DyingUnit ?? JassValue.Null);
+        Auto("GetKillingUnit", (_, _) => runtime.Context?.Event.KillingUnit ?? JassValue.Null);
+        Auto("GetAttacker", (_, _) => runtime.Context?.Event.Attacker ?? JassValue.Null);
+        Auto("GetEventDamageSource", (_, _) => runtime.Context?.Event.DamageSource ?? JassValue.Null);
+        Auto("GetEventDamage", (_, _) => JassValue.FromReal(runtime.Context?.Event.Damage ?? 0f));
+        Auto("GetSpellAbilityUnit", (_, _) => runtime.Context?.Event.SpellAbilityUnit ?? JassValue.Null);
+        Auto("GetSpellAbilityId", (_, _) => JassValue.FromInteger(runtime.Context?.Event.SpellAbilityId ?? 0));
+        Auto("GetSpellTargetUnit", (_, _) => runtime.Context?.Event.SpellTargetUnit ?? JassValue.Null);
+        Auto("GetSpellTargetX", (_, _) => JassValue.FromReal(runtime.Context?.Event.SpellTargetX ?? 0f));
+        Auto("GetSpellTargetY", (_, _) => JassValue.FromReal(runtime.Context?.Event.SpellTargetY ?? 0f));
+        Auto("GetOrderedUnit", (_, _) => runtime.Context?.Event.OrderedUnit ?? JassValue.Null);
+        Auto("GetIssuedOrderId", (_, _) => JassValue.FromInteger(runtime.Context?.Event.IssuedOrderId ?? 0));
+        Auto("GetOrderTargetUnit", (_, _) => runtime.Context?.Event.OrderTargetUnit ?? JassValue.Null);
+        Auto("GetOrderPointX", (_, _) => JassValue.FromReal(runtime.Context?.Event.OrderPointX ?? 0f));
+        Auto("GetOrderPointY", (_, _) => JassValue.FromReal(runtime.Context?.Event.OrderPointY ?? 0f));
         Auto("SetCameraField", (_, a) => { runtime.CameraFields[EnumId(a[0])] = a[1].Real; return JassValue.Null; });
         Auto("GetCameraField", (_, a) => JassValue.FromReal(runtime.CameraFields.TryGetValue(EnumId(a[0]), out var v) ? v : 0f));
         Auto("GetCameraTargetPositionX", (_, _) => JassValue.FromReal(runtime.CameraX));
@@ -305,6 +487,80 @@ public static class RuntimeNatives
         return table;
     }
 
+    // JASS S2I/S2R follow C atoi/atof: parse the numeric prefix and stop at the first
+    // non-numeric character ("126.0" -> 126), unlike strict int.TryParse.
+    private static int ParseLeadingInt(string? text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return 0;
+        }
+
+        var index = 0;
+        var sign = 1;
+        if (text[index] is '+' or '-')
+        {
+            sign = text[index] == '-' ? -1 : 1;
+            index++;
+        }
+
+        var value = 0;
+        while (index < text.Length && char.IsAsciiDigit(text[index]))
+        {
+            value = (value * 10) + (text[index] - '0');
+            index++;
+        }
+
+        return sign * value;
+    }
+
+    private static float ParseLeadingFloat(string? text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return 0f;
+        }
+
+        var index = 0;
+        if (text[index] is '+' or '-')
+        {
+            index++;
+        }
+
+        while (index < text.Length && (char.IsAsciiDigit(text[index]) || text[index] is '.' or 'e' or 'E' or '+' or '-'))
+        {
+            if (float.TryParse(text[..(index + 1)], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+            {
+                index++;
+                continue;
+            }
+
+            break;
+        }
+
+        return float.TryParse(text[..index], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var value) ? value : 0f;
+    }
+
+    private static MultiboardState Multi(JassValue value)
+    {
+        if (value.Kind != JassValueKind.Handle || value.Handle?.State is not MultiboardState board)
+        {
+            throw new JassRuntimeException("expected multiboard handle");
+        }
+
+        return board;
+    }
+
+    private static MultiboardItemState MultiItem(JassValue value)
+    {
+        if (value.Kind != JassValueKind.Handle || value.Handle?.State is not MultiboardItemState item)
+        {
+            throw new JassRuntimeException("expected multiboarditem handle");
+        }
+
+        return item;
+    }
+
     private static UnitState Unit(JassValue value)
     {
         if (value.Kind != JassValueKind.Handle || value.Handle?.State is not UnitState unit)
@@ -317,13 +573,6 @@ public static class RuntimeNatives
 
     private static int GetTech(Dictionary<(int Player, int Tech), int> table, int player, int tech) =>
         table.TryGetValue((player, tech), out var value) ? value : 0;
-
-    private static JassValue Event(JassValue triggerValue, string description)
-    {
-        var trigger = State<TriggerState>(triggerValue, "trigger");
-        trigger.Events.Add(description);
-        return JassValue.Null;
-    }
 
     private static JassValue Sound(JassValue[] args, string? label)
     {

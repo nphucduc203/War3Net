@@ -11,6 +11,22 @@
         <Start>&#32;</Start>
         <End>&#126;</End>
       </CharacterRegion>
+      <CharacterRegion>
+        <Start>&#192;</Start>
+        <End>&#255;</End>
+      </CharacterRegion>
+      <CharacterRegion>
+        <Start>&#256;</Start>
+        <End>&#383;</End>
+      </CharacterRegion>
+      <CharacterRegion>
+        <Start>&#416;</Start>
+        <End>&#432;</End>
+      </CharacterRegion>
+      <CharacterRegion>
+        <Start>&#7840;</Start>
+        <End>&#7929;</End>
+      </CharacterRegion>
     </CharacterRegions>
   </Asset>
 </XnaContent>

@@ -1,0 +1,188 @@
+{
+  "generatedUtc": "2026-10-29T18:12:18.6882707Z",
+  "map": "C:/Users/admin/Downloads/811.ThoiDaiBS.w3x",
+  "runtimeProfile": {
+    "warcraft": "1.27.0.52240 (War3.exe/game.dll file version)",
+    "ydwe": "WorldEdit v1.2.9C / YDWEConfig 2.0.0.2485",
+    "kkwe": [
+      "2263",
+      "2332",
+      "2362",
+      "2485"
+    ],
+    "dzapi": "dz_w3_plugin.dll 1.0.0.51 (variants 1.0.0.248, 2.0.0.0)",
+    "targetLua": "5.3.6 (luacore.dll, i386)",
+    "engineLua": "NLua / Lua 5.4 (managed host; 5.3.6 binary is 32-bit only)",
+    "script": {
+      "language": "jass",
+      "mapLua": false,
+      "commonJ": 166690,
+      "blizzardJ": 451847,
+      "mapJ": 1749409
+    }
+  },
+  "nativeCoverage": {
+    "defined": 1425,
+    "extensionDeclared": 265,
+    "implemented": 470,
+    "extensionImplemented": 69,
+    "tested": 196,
+    "extensionTested": 28,
+    "calledByMap": 192,
+    "extensionCalledByMap": 28,
+    "scenario": {
+      "globals": true,
+      "main": true,
+      "timerCallbacks": 16202,
+      "units": 11,
+      "triggers": 239,
+      "timers": 32,
+      "frames": 708,
+      "nativeCalls": 264320
+    },
+    "unsupportedOnScenarioPath": null
+  },
+  "scriptCompatibility": {
+    "jass": [
+      "globals/const/arrays/local arrays",
+      "functions/params/returns/recursion",
+      "if/elseif/else",
+      "loop/exitwhen",
+      "set/call/return",
+      "debug blocks (skipped)",
+      "integer/real/boolean/string/null/code/handle",
+      "fourcc literals (little-endian)",
+      "ExecuteFunc string reachability",
+      "native dispatch with strict failure"
+    ],
+    "lua": {
+      "target": "5.3.6",
+      "runtime": "5.4",
+      "verified": [
+        "string/number return conversion",
+        "integer vs float tostring (2 vs 2.0)",
+        "floor division //",
+        "modulo sign semantics",
+        "scientific notation",
+        "14-digit precision",
+        "string.format",
+        "tonumber hex",
+        "64-bit integer wrap",
+        "locale-independent decimals",
+        "require(\u0027jass.slk\u0027)",
+        "syntax/runtime error -\u003E null"
+      ],
+      "mapExpressions": [
+        {
+          "expression": "(require\u0027jass.slk\u0027).item[858992713].Ubertip",
+          "value": "TRIGSTR_000",
+          "errorKind": 0
+        },
+        {
+          "expression": "(require\u0027jass.slk\u0027).item[808529993].Ubertip",
+          "value": "TRIGSTR_002",
+          "errorKind": 0
+        },
+        {
+          "expression": "(require\u0027jass.slk\u0027).item[1328623689].Ubertip",
+          "value": "???????",
+          "errorKind": 0
+        }
+      ],
+      "errors": 0
+    }
+  },
+  "dataCompatibility": {
+    "sources": [
+      "Units/ItemData.slk",
+      "Units/UnitWeapons.slk",
+      "Units/ItemStrings.txt",
+      "war3map.w3t (ItemObjectData)",
+      "war3map.w3u (UnitObjectData)",
+      "war3map.wts"
+    ],
+    "precedence": [
+      "map object data",
+      "base SLK",
+      "wts for TRIGSTR_"
+    ],
+    "customFieldQueries": 3,
+    "customFieldHits": 3,
+    "wtsEntries": 2912,
+    "missingCustomFields": [],
+    "unresolvedTriggerStrings": [
+      "TRIGSTR_000",
+      "TRIGSTR_002"
+    ],
+    "fields": [
+      "item.class",
+      "item.prio",
+      "item.Name",
+      "item.Ubertip",
+      "unit.weapsOn"
+    ]
+  },
+  "eventCompatibility": {
+    "registeredTotal": 1911,
+    "registeredTypes": {
+      "player-unit-event": 1793,
+      "chat": 28,
+      "unit-event": 25,
+      "timer": 16,
+      "player-event": 16,
+      "dialog": 9,
+      "game-state": 6,
+      "enter-region": 5,
+      "leave-region": 4,
+      "key-event": 3,
+      "sync": 3,
+      "timer-expire": 2,
+      "wheel": 1
+    },
+    "dispatchedTypes": {
+      "timer": 17,
+      "player-unit-event": 1,
+      "chat": 1,
+      "dialog": 1
+    },
+    "timerCallbacks": 16202,
+    "chatDispatched": 1,
+    "dialogClicks": 1,
+    "dialogDispatched": 1,
+    "dialogStateVerified": true,
+    "dialog": {
+      "atMs": 3000,
+      "message": "M\u1EDDi l\u1EF1a ch\u1ECDn h\u00ECnh th\u1EE9c game [18]",
+      "button": "M\u00F4 h\u00ECnh luy\u1EC7n t\u1EADp",
+      "yxmsBefore": "false",
+      "yxmsAfter": "true",
+      "messagesAdded": 1,
+      "nestedEvaluationsAdded": 1,
+      "hiddenAfterClick": true
+    },
+    "selection": {
+      "atMs": 3000,
+      "unit": "U00O",
+      "owner": 8,
+      "fired": 1,
+      "evaluationsAdded": 1,
+      "storedInMapHashtable": true,
+      "stateVerified": true
+    },
+    "callbacksSucceeded": 20,
+    "callbacksFailed": 0,
+    "eventDepthAfterDispatch": 0,
+    "triggerExecutions": 34,
+    "notDispatched": [
+      "unit-event",
+      "player-event",
+      "game-state",
+      "enter-region",
+      "leave-region",
+      "key-event",
+      "sync",
+      "timer-expire",
+      "wheel"
+    ]
+  }
+}

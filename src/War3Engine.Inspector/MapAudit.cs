@@ -4,6 +4,7 @@ using War3Engine.Assets;
 using War3Engine.Compat;
 using War3Engine.Core;
 using War3Engine.Scripting;
+using War3Engine.Scripting.Lua;
 using War3Net.Common.Extensions;
 
 namespace War3Engine.Inspector;
@@ -38,6 +39,15 @@ internal static class MapAudit
         var blizzard = JassProgramModel.Build(JassProgram.Parse(blizzardSource));
         var merged = JassProgramMerge.Merge(common, blizzard, model);
         var runtime = new JassGameRuntime();
+        try
+        {
+            runtime.Lua = new NLuaBridge(JassSlkQueryProvider.Load(store, target).Query);
+        }
+        catch (FileNotFoundException)
+        {
+            runtime.Lua = null;
+        }
+
         var registry = JassMapHost.CreateRegistry(merged, runtime);
 
         var locations = NativeLocations(source);

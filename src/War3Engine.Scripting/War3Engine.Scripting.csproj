@@ -7,6 +7,7 @@
   <ItemGroup>
     <ProjectReference Include="..\War3Engine.Core\War3Engine.Core.csproj" />
     <ProjectReference Include="..\..\War3Net-master\src\War3Net.CodeAnalysis.Jass\War3Net.CodeAnalysis.Jass.csproj" />
+    <PackageReference Include="NLua" Version="1.7.9" />
   </ItemGroup>
 
 </Project>

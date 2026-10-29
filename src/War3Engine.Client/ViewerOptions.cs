@@ -30,6 +30,18 @@ public sealed class ViewerOptions
 
     public int MaxInstances { get; private set; } = 2000;
 
+    public bool RunJass { get; private set; }
+
+    public int AdvanceMs { get; private set; }
+
+    public string? Chat { get; private set; }
+
+    public string? FocusType { get; private set; }
+
+    public int? ClickDialog { get; private set; }
+
+    public int? SelectUnit { get; private set; }
+
     public static ViewerOptions Parse(string[] args)
     {
         var options = new ViewerOptions();
@@ -71,6 +83,24 @@ public sealed class ViewerOptions
                     break;
                 case "--geosets":
                     options.Geosets = Next(args, ref i).Split(',').Select(int.Parse).ToHashSet();
+                    break;
+                case "--run-jass":
+                    options.RunJass = true;
+                    break;
+                case "--advance-ms":
+                    options.AdvanceMs = int.Parse(Next(args, ref i));
+                    break;
+                case "--focus-type":
+                    options.FocusType = Next(args, ref i);
+                    break;
+                case "--chat":
+                    options.Chat = Next(args, ref i);
+                    break;
+                case "--click-dialog":
+                    options.ClickDialog = int.Parse(Next(args, ref i));
+                    break;
+                case "--select-unit":
+                    options.SelectUnit = int.Parse(Next(args, ref i));
                     break;
                 case "--instances":
                     options.MaxInstances = int.Parse(Next(args, ref i));

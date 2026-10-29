@@ -17,6 +17,7 @@
     <ProjectReference Include="..\..\src\War3Engine.Rendering\War3Engine.Rendering.csproj" />
     <ProjectReference Include="..\..\src\War3Engine.Compat\War3Engine.Compat.csproj" />
     <ProjectReference Include="..\..\src\War3Engine.Scripting\War3Engine.Scripting.csproj" />
+    <ProjectReference Include="..\..\src\War3Engine.Client\War3Engine.Client.csproj" />
   </ItemGroup>
 
 </Project>
