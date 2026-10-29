@@ -1,0 +1,63 @@
+﻿namespace War3Net.CodeAnalysis.VJass.Syntax
+{
+    public class VJassIfClauseDeclaratorSyntax : VJassSyntaxNode
+    {
+        internal VJassIfClauseDeclaratorSyntax(
+            VJassSyntaxToken ifToken,
+            VJassExpressionSyntax condition,
+            VJassSyntaxToken thenToken)
+        {
+            IfToken = ifToken;
+            Condition = condition;
+            ThenToken = thenToken;
+        }
+
+        public VJassSyntaxToken IfToken { get; }
+
+        public VJassExpressionSyntax Condition { get; }
+
+        public VJassSyntaxToken ThenToken { get; }
+
+        public override bool IsEquivalentTo([NotNullWhen(true)] VJassSyntaxNode? other)
+        {
+            return other is VJassIfClauseDeclaratorSyntax ifClauseDeclarator
+                && Condition.IsEquivalentTo(ifClauseDeclarator.Condition);
+        }
+
+        public override void WriteTo(TextWriter writer)
+        {
+            IfToken.WriteTo(writer);
+            Condition.WriteTo(writer);
+            ThenToken.WriteTo(writer);
+        }
+
+        public override void ProcessTo(TextWriter writer, VJassPreprocessorContext context)
+        {
+            IfToken.ProcessTo(writer, context);
+            Condition.ProcessTo(writer, context);
+            ThenToken.ProcessTo(writer, context);
+        }
+
+        public override string ToString() => $"{IfToken} {Condition} {ThenToken}";
+
+        public override VJassSyntaxToken GetFirstToken() => IfToken;
+
+        public override VJassSyntaxToken GetLastToken() => ThenToken;
+
+        protected internal override VJassIfClauseDeclaratorSyntax ReplaceFirstToken(VJassSyntaxToken newToken)
+        {
+            return new VJassIfClauseDeclaratorSyntax(
+                newToken,
+                Condition,
+                ThenToken);
+        }
+
+        protected internal override VJassIfClauseDeclaratorSyntax ReplaceLastToken(VJassSyntaxToken newToken)
+        {
+            return new VJassIfClauseDeclaratorSyntax(
+                IfToken,
+                Condition,
+                newToken);
+        }
+    }
+}

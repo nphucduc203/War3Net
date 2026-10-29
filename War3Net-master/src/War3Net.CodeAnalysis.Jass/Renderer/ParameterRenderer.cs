@@ -1,0 +1,12 @@
+﻿namespace War3Net.CodeAnalysis.Jass
+{
+    public partial class JassRenderer
+    {
+        public void Render(JassParameterSyntax parameter)
+        {
+            Render(parameter.Type);
+            WriteSpace();
+            Render(parameter.IdentifierName);
+        }
+    }
+}

@@ -1,0 +1,73 @@
+﻿namespace War3Net.CodeAnalysis.VJass.Syntax
+{
+    public class VJassStaticIfMemberDeclarationSyntax : VJassMemberDeclarationSyntax
+    {
+        internal VJassStaticIfMemberDeclarationSyntax(
+            VJassMemberDeclarationStaticIfClauseSyntax staticIfClause,
+            ImmutableArray<VJassMemberDeclarationElseIfClauseSyntax> elseIfClauses,
+            VJassMemberDeclarationElseClauseSyntax? elseClause,
+            VJassSyntaxToken endIfToken)
+        {
+            StaticIfClause = staticIfClause;
+            ElseIfClauses = elseIfClauses;
+            ElseClause = elseClause;
+            EndIfToken = endIfToken;
+        }
+
+        public VJassMemberDeclarationStaticIfClauseSyntax StaticIfClause { get; }
+
+        public ImmutableArray<VJassMemberDeclarationElseIfClauseSyntax> ElseIfClauses { get; }
+
+        public VJassMemberDeclarationElseClauseSyntax? ElseClause { get; }
+
+        public VJassSyntaxToken EndIfToken { get; }
+
+        public override bool IsEquivalentTo([NotNullWhen(true)] VJassSyntaxNode? other)
+        {
+            return other is VJassStaticIfMemberDeclarationSyntax staticIfMemberDeclaration
+                && StaticIfClause.IsEquivalentTo(staticIfMemberDeclaration.StaticIfClause)
+                && ElseIfClauses.IsEquivalentTo(staticIfMemberDeclaration.ElseIfClauses)
+                && ElseClause.NullableEquivalentTo(staticIfMemberDeclaration.ElseClause);
+        }
+
+        public override void WriteTo(TextWriter writer)
+        {
+            StaticIfClause.WriteTo(writer);
+            ElseIfClauses.WriteTo(writer);
+            ElseClause?.WriteTo(writer);
+            EndIfToken.WriteTo(writer);
+        }
+
+        public override void ProcessTo(TextWriter writer, VJassPreprocessorContext context)
+        {
+            StaticIfClause.ProcessTo(writer, context);
+            ElseIfClauses.ProcessTo(writer, context);
+            ElseClause?.ProcessTo(writer, context);
+            EndIfToken.ProcessTo(writer, context);
+        }
+
+        public override string ToString() => StaticIfClause.ToString();
+
+        public override VJassSyntaxToken GetFirstToken() => StaticIfClause.GetFirstToken();
+
+        public override VJassSyntaxToken GetLastToken() => EndIfToken;
+
+        protected internal override VJassStaticIfMemberDeclarationSyntax ReplaceFirstToken(VJassSyntaxToken newToken)
+        {
+            return new VJassStaticIfMemberDeclarationSyntax(
+                StaticIfClause.ReplaceFirstToken(newToken),
+                ElseIfClauses,
+                ElseClause,
+                EndIfToken);
+        }
+
+        protected internal override VJassStaticIfMemberDeclarationSyntax ReplaceLastToken(VJassSyntaxToken newToken)
+        {
+            return new VJassStaticIfMemberDeclarationSyntax(
+                StaticIfClause,
+                ElseIfClauses,
+                ElseClause,
+                newToken);
+        }
+    }
+}

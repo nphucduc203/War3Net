@@ -1,0 +1,20 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/War3Engine.Assets/War3Engine.Assets.csproj" />
+    <Project Path="src/War3Engine.Client/War3Engine.Client.csproj" />
+    <Project Path="src/War3Engine.Core/War3Engine.Core.csproj" />
+    <Project Path="src/War3Engine.Inspector/War3Engine.Inspector.csproj" />
+    <Project Path="src/War3Engine.Rendering/War3Engine.Rendering.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/War3Engine.Tests/War3Engine.Tests.csproj" />
+  </Folder>
+  <Folder Name="/War3Net-master/" />
+  <Folder Name="/War3Net-master/src/">
+    <Project Path="War3Net-master/src/War3Net.Common/War3Net.Common.csproj" />
+    <Project Path="War3Net-master/src/War3Net.Drawing.Blp/War3Net.Drawing.Blp.csproj" />
+    <Project Path="War3Net-master/src/War3Net.IO.Compression/War3Net.IO.Compression.csproj" />
+    <Project Path="War3Net-master/src/War3Net.IO.Mpq/War3Net.IO.Mpq.csproj" />
+    <Project Path="War3Net-master/src/War3Net.Modeling/War3Net.Modeling.csproj" />
+  </Folder>
+</Solution>

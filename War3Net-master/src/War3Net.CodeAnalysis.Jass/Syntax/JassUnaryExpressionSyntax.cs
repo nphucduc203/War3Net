@@ -1,0 +1,98 @@
+﻿namespace War3Net.CodeAnalysis.Jass.Syntax
+{
+    public class JassUnaryExpressionSyntax : JassExpressionSyntax
+    {
+        internal JassUnaryExpressionSyntax(
+            JassSyntaxToken operatorToken,
+            JassExpressionSyntax expression)
+        {
+            OperatorToken = operatorToken;
+            Expression = expression;
+        }
+
+        public JassSyntaxToken OperatorToken { get; }
+
+        public JassExpressionSyntax Expression { get; }
+
+        public override JassSyntaxKind SyntaxKind => JassSyntaxFacts.GetUnaryExpressionKind(OperatorToken.SyntaxKind);
+
+        public override bool IsEquivalentTo([NotNullWhen(true)] JassSyntaxNode? other)
+        {
+            return other is JassUnaryExpressionSyntax unaryExpression
+                && OperatorToken.IsEquivalentTo(unaryExpression.OperatorToken)
+                && Expression.IsEquivalentTo(unaryExpression.Expression);
+        }
+
+        public override void WriteTo(TextWriter writer)
+        {
+            OperatorToken.WriteTo(writer);
+            Expression.WriteTo(writer);
+        }
+
+        public override IEnumerable<JassSyntaxNode> GetChildNodes()
+        {
+            yield return Expression;
+        }
+
+        public override IEnumerable<JassSyntaxToken> GetChildTokens()
+        {
+            yield return OperatorToken;
+        }
+
+        public override IEnumerable<JassSyntaxNodeOrToken> GetChildNodesAndTokens()
+        {
+            yield return OperatorToken;
+            yield return Expression;
+        }
+
+        public override IEnumerable<JassSyntaxNode> GetDescendantNodes()
+        {
+            yield return Expression;
+            foreach (var descendant in Expression.GetDescendantNodes())
+            {
+                yield return descendant;
+            }
+        }
+
+        public override IEnumerable<JassSyntaxToken> GetDescendantTokens()
+        {
+            yield return OperatorToken;
+
+            foreach (var descendant in Expression.GetDescendantTokens())
+            {
+                yield return descendant;
+            }
+        }
+
+        public override IEnumerable<JassSyntaxNodeOrToken> GetDescendantNodesAndTokens()
+        {
+            yield return OperatorToken;
+
+            yield return Expression;
+            foreach (var descendant in Expression.GetDescendantNodesAndTokens())
+            {
+                yield return descendant;
+            }
+        }
+
+        public override string ToString() => $"{OperatorToken}{(OperatorToken.SyntaxKind == JassSyntaxKind.NotKeyword ? JassSymbol.Space : string.Empty)}{Expression}";
+
+        public override JassSyntaxToken GetFirstToken() => OperatorToken;
+
+        public override JassSyntaxToken GetLastToken() => Expression.GetLastToken();
+
+        protected internal override JassUnaryExpressionSyntax ReplaceFirstToken(JassSyntaxToken newToken)
+        {
+            return new JassUnaryExpressionSyntax(
+                newToken,
+                Expression);
+        }
+
+        protected internal override JassUnaryExpressionSyntax ReplaceLastToken(JassSyntaxToken newToken)
+        {
+            return new JassUnaryExpressionSyntax(
+                OperatorToken,
+                Expression.ReplaceLastToken(newToken));
+        }
+    }
+}

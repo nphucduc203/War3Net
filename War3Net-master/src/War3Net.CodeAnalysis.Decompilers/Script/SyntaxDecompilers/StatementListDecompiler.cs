@@ -1,0 +1,95 @@
+﻿namespace War3Net.CodeAnalysis.Decompilers
+{
+    public partial class JassScriptDecompiler
+    {
+        private bool TryDecompileActionStatements(ImmutableArray<JassStatementSyntax> statements, [NotNullWhen(true)] out List<TriggerFunction>? actionFunctions)
+        {
+            var result = new List<TriggerFunction>();
+
+            for (var i = 0; i < statements.Length; i++)
+            {
+                DecompileLeadingTrivia(statements[i].GetLeadingTrivia(), ref result);
+
+                if (!TryDecompileActionStatement(statements, ref i, ref result))
+                {
+                    result.Add(DecompileCustomScriptAction(statements[i].ToString()));
+                }
+            }
+
+            actionFunctions = result;
+            return true;
+        }
+
+        private bool TryDecompileConditionStatements(
+            ImmutableArray<JassStatementSyntax> statements,
+            [NotNullWhen(true)] out List<TriggerFunction>? conditionFunctions)
+        {
+            var result = new List<TriggerFunction>();
+
+            foreach (var conditionStatement in statements.SkipLast(1))
+            {
+                if (TryDecompileConditionStatement(conditionStatement, true, out var conditionFunction))
+                {
+                    result.Add(conditionFunction);
+                }
+                else
+                {
+                    conditionFunctions = null;
+                    return false;
+                }
+            }
+
+            // Last statement must be "return true"
+            if (statements[^1] is not JassReturnStatementSyntax finalReturnStatement ||
+                finalReturnStatement.Value is null ||
+                !finalReturnStatement.Value.TryGetBooleanExpressionValue(out var returnStatementValue) ||
+                !returnStatementValue)
+            {
+                conditionFunctions = null;
+                return false;
+            }
+
+            conditionFunctions = result;
+            return true;
+        }
+
+        private bool TryDecompileAndOrMultipleStatements(
+            ImmutableArray<JassStatementSyntax> statements,
+            [NotNullWhen(true)] out TriggerFunction? conditionFunction)
+        {
+            var result = new TriggerFunction
+            {
+                Type = TriggerFunctionType.Condition,
+                IsEnabled = true,
+            };
+
+            // Last statement must be "return true" or "return false"
+            if (statements[^1] is not JassReturnStatementSyntax finalReturnStatement ||
+                finalReturnStatement.Value is null ||
+                !finalReturnStatement.Value.TryGetBooleanExpressionValue(out var returnStatementValue))
+            {
+                conditionFunction = null;
+                return false;
+            }
+
+            result.Name = returnStatementValue ? "AndMultiple" : "OrMultiple";
+
+            foreach (var conditionStatement in statements.SkipLast(1))
+            {
+                if (TryDecompileConditionStatement(conditionStatement, returnStatementValue, out var function))
+                {
+                    function.Branch = 0;
+                    result.ChildFunctions.Add(function);
+                }
+                else
+                {
+                    conditionFunction = null;
+                    return false;
+                }
+            }
+
+            conditionFunction = result;
+            return true;
+        }
+    }
+}

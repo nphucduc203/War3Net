@@ -1,0 +1,29 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <TargetFrameworks>$(TfmGroupDotNetWindows)</TargetFrameworks>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Description>Read and write BLP texture files.</Description>
+    <PackageTags>blp;modding;warcraft3;wc3</PackageTags>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$([System.String]::Copy('$(TargetFramework)').Contains('-windows'))">
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="JpegLibrary" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(PUBLISH)'!='true'">
+    <ProjectReference Include="..\War3Net.Common\War3Net.Common.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(PUBLISH)'=='true'">
+    <PackageReference Include="War3Net.Common" />
+  </ItemGroup>
+
+</Project>

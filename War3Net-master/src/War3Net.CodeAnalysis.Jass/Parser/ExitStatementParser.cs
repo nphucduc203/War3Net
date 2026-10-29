@@ -1,0 +1,21 @@
+﻿using static Pidgin.Parser;
+
+namespace War3Net.CodeAnalysis.Jass
+{
+    internal partial class JassParser
+    {
+        internal static Parser<char, JassStatementSyntax> GetExitStatementParser(
+            Parser<char, JassExpressionSyntax> expressionParser,
+            Parser<char, JassSyntaxTriviaList> triviaParser,
+            Parser<char, JassSyntaxTriviaList> trailingTriviaParser)
+        {
+            return Map(
+                (exitWhenToken, expression, trailingTrivia) => (JassStatementSyntax)new JassExitStatementSyntax(
+                    exitWhenToken,
+                    expression.AppendTrailingTrivia(trailingTrivia)),
+                Keyword.ExitWhen.AsToken(triviaParser, JassSyntaxKind.ExitWhenKeyword),
+                expressionParser,
+                trailingTriviaParser);
+        }
+    }
+}

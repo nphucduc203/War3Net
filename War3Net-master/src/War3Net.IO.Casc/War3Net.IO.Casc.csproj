@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(TfmGroupDotNet)</TargetFrameworks>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Description>Read CASC archives.</Description>
+    <PackageTags>casc;modding;warcraft3;wc3</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(PUBLISH)'!='true'">
+    <ProjectReference Include="..\War3Net.IO.Compression\War3Net.IO.Compression.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(PUBLISH)'=='true'">
+    <PackageReference Include="War3Net.IO.Compression" />
+  </ItemGroup>
+
+</Project>

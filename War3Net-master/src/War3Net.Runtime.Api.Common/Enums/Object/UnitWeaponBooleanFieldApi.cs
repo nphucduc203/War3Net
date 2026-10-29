@@ -1,0 +1,19 @@
+﻿#pragma warning disable CA1707 // Identifiers should not contain underscores
+#pragma warning disable CA2211 // Non-constant fields should not be visible
+#pragma warning disable SA1310 // Field names should not contain underscore
+#pragma warning disable SA1401 // Fields should be private
+
+namespace War3Net.Runtime.Api.Common.Enums.Object
+{
+    public static class UnitWeaponBooleanFieldApi
+    {
+        public static readonly UnitWeaponBooleanField UNIT_WEAPON_BF_ATTACK_SHOW_UI = ConvertUnitWeaponBooleanField((int)UnitWeaponBooleanField.Type.ATTACK_SHOW_UI);
+        public static readonly UnitWeaponBooleanField UNIT_WEAPON_BF_ATTACKS_ENABLED = ConvertUnitWeaponBooleanField((int)UnitWeaponBooleanField.Type.ATTACKS_ENABLED);
+        public static readonly UnitWeaponBooleanField UNIT_WEAPON_BF_ATTACK_PROJECTILE_HOMING_ENABLED = ConvertUnitWeaponBooleanField((int)UnitWeaponBooleanField.Type.ATTACK_PROJECTILE_HOMING_ENABLED);
+
+        public static UnitWeaponBooleanField ConvertUnitWeaponBooleanField(int i)
+        {
+            return UnitWeaponBooleanField.GetUnitWeaponBooleanField(i);
+        }
+    }
+}

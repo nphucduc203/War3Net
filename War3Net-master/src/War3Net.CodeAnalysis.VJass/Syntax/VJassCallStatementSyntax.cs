@@ -1,0 +1,55 @@
+﻿namespace War3Net.CodeAnalysis.VJass.Syntax
+{
+    public class VJassCallStatementSyntax : VJassStatementSyntax
+    {
+        internal VJassCallStatementSyntax(
+            VJassSyntaxToken callToken,
+            VJassExpressionSyntax expression)
+        {
+            CallToken = callToken;
+            Expression = expression;
+        }
+
+        public VJassSyntaxToken CallToken { get; }
+
+        public VJassExpressionSyntax Expression { get; }
+
+        public override bool IsEquivalentTo([NotNullWhen(true)] VJassSyntaxNode? other)
+        {
+            return other is VJassCallStatementSyntax callStatement
+                && Expression.IsEquivalentTo(callStatement.Expression);
+        }
+
+        public override void WriteTo(TextWriter writer)
+        {
+            CallToken.WriteTo(writer);
+            Expression.WriteTo(writer);
+        }
+
+        public override void ProcessTo(TextWriter writer, VJassPreprocessorContext context)
+        {
+            CallToken.ProcessTo(writer, context);
+            Expression.ProcessTo(writer, context);
+        }
+
+        public override string ToString() => $"{CallToken} {Expression}";
+
+        public override VJassSyntaxToken GetFirstToken() => CallToken;
+
+        public override VJassSyntaxToken GetLastToken() => Expression.GetLastToken();
+
+        protected internal override VJassCallStatementSyntax ReplaceFirstToken(VJassSyntaxToken newToken)
+        {
+            return new VJassCallStatementSyntax(
+                newToken,
+                Expression);
+        }
+
+        protected internal override VJassCallStatementSyntax ReplaceLastToken(VJassSyntaxToken newToken)
+        {
+            return new VJassCallStatementSyntax(
+                CallToken,
+                Expression.ReplaceLastToken(newToken));
+        }
+    }
+}

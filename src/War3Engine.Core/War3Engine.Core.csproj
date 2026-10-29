@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Engine-independent core types: settings, coordinates, animation sampling, model data.</Description>
+  </PropertyGroup>
+
+</Project>

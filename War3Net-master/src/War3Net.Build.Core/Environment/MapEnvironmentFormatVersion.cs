@@ -1,0 +1,17 @@
+﻿#pragma warning disable CA1008
+#pragma warning disable SA1300
+
+namespace War3Net.Build.Environment
+{
+    /// <summary>
+    /// File format version for <see cref="MapEnvironment"/>.
+    /// </summary>
+    public enum MapEnvironmentFormatVersion
+    {
+        /// <summary>The initial version.</summary>
+        v11 = 11,
+
+        /// <summary>Introduced in patch 2.0.3.</summary>
+        v12 = 12,
+    }
+}

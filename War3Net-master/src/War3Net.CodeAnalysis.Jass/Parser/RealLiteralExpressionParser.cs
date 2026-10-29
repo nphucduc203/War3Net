@@ -1,0 +1,20 @@
+﻿using static Pidgin.Parser;
+using static Pidgin.Parser<char>;
+
+namespace War3Net.CodeAnalysis.Jass
+{
+    internal partial class JassParser
+    {
+        internal static Parser<char, JassExpressionSyntax> GetRealLiteralExpressionParser(
+            Parser<char, JassSyntaxTriviaList> triviaParser)
+        {
+            return OneOf(
+                Try(Token(char.IsDigit).AtLeastOnce().Before(Symbol.Dot)).Then(Token(char.IsDigit).Many()),
+                Symbol.Dot.Then(Token(char.IsDigit).AtLeastOnce()))
+                .MapWithInput((s, _) => s.ToString())
+                .AsToken(triviaParser, JassSyntaxKind.RealLiteralToken)
+                .Map(token => (JassExpressionSyntax)new JassLiteralExpressionSyntax(token))
+                .Labelled("real literal");
+        }
+    }
+}

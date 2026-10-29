@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <TargetFrameworks>$(TfmGroupDotNetWindows)</TargetFrameworks>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Description>Blizzard.j API implemented in C#.</Description>
+    <PackageTags>api;blizzard;modding;warcraft3;wc3</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(PUBLISH)'!='true'">
+    <ProjectReference Include="..\War3Net.Runtime.Api.Common\War3Net.Runtime.Api.Common.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(PUBLISH)'=='true'">
+    <PackageReference Include="War3Net.Runtime.Api.Common" />
+  </ItemGroup>
+
+</Project>

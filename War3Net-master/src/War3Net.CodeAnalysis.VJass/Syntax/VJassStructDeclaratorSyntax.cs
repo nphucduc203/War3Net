@@ -1,0 +1,72 @@
+﻿namespace War3Net.CodeAnalysis.VJass.Syntax
+{
+    public class VJassStructDeclaratorSyntax : VJassSyntaxNode
+    {
+        internal VJassStructDeclaratorSyntax(
+            VJassSyntaxToken structToken,
+            VJassIdentifierNameSyntax identifierName,
+            VJassExtendsClauseSyntax? extendsClause)
+        {
+            StructToken = structToken;
+            IdentifierName = identifierName;
+            ExtendsClause = extendsClause;
+        }
+
+        public VJassSyntaxToken StructToken { get; }
+
+        public VJassIdentifierNameSyntax IdentifierName { get; }
+
+        public VJassExtendsClauseSyntax? ExtendsClause { get; }
+
+        public override bool IsEquivalentTo([NotNullWhen(true)] VJassSyntaxNode? other)
+        {
+            return other is VJassStructDeclaratorSyntax structDeclarator
+                && IdentifierName.IsEquivalentTo(structDeclarator.IdentifierName)
+                && ExtendsClause.NullableEquivalentTo(structDeclarator.ExtendsClause);
+        }
+
+        public override void WriteTo(TextWriter writer)
+        {
+            StructToken.WriteTo(writer);
+            IdentifierName.WriteTo(writer);
+            ExtendsClause?.WriteTo(writer);
+        }
+
+        public override void ProcessTo(TextWriter writer, VJassPreprocessorContext context)
+        {
+            StructToken.ProcessTo(writer, context);
+            IdentifierName.ProcessTo(writer, context);
+            ExtendsClause?.ProcessTo(writer, context);
+        }
+
+        public override string ToString() => $"{StructToken} {IdentifierName}{ExtendsClause.OptionalPrefixed()}";
+
+        public override VJassSyntaxToken GetFirstToken() => StructToken;
+
+        public override VJassSyntaxToken GetLastToken() => ((VJassSyntaxNode?)ExtendsClause ?? IdentifierName).GetLastToken();
+
+        protected internal override VJassStructDeclaratorSyntax ReplaceFirstToken(VJassSyntaxToken newToken)
+        {
+            return new VJassStructDeclaratorSyntax(
+                newToken,
+                IdentifierName,
+                ExtendsClause);
+        }
+
+        protected internal override VJassStructDeclaratorSyntax ReplaceLastToken(VJassSyntaxToken newToken)
+        {
+            if (ExtendsClause is not null)
+            {
+                return new VJassStructDeclaratorSyntax(
+                    StructToken,
+                    IdentifierName,
+                    ExtendsClause.ReplaceLastToken(newToken));
+            }
+
+            return new VJassStructDeclaratorSyntax(
+                StructToken,
+                IdentifierName.ReplaceLastToken(newToken),
+                null);
+        }
+    }
+}

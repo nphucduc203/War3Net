@@ -1,0 +1,67 @@
+﻿namespace War3Net.CodeAnalysis.Decompilers
+{
+    public partial class JassScriptDecompiler
+    {
+        private bool TryDecompileFourCCLiteralExpression(
+            JassLiteralExpressionSyntax fourCCLiteralExpression,
+            string expectedType,
+            [NotNullWhen(true)] out TriggerFunctionParameter? functionParameter)
+        {
+            if (TryDecompileTriggerFunctionParameterPreset(fourCCLiteralExpression.Token.Text, expectedType, out _, out functionParameter))
+            {
+                return true;
+            }
+
+            if (string.Equals(expectedType, JassKeyword.Integer, StringComparison.Ordinal))
+            {
+                functionParameter = new TriggerFunctionParameter
+                {
+                    Type = TriggerFunctionParameterType.String,
+                    Value = fourCCLiteralExpression.Token.Text[1..^1],
+                };
+
+                return true;
+            }
+            else if (Context.TriggerData.TriggerTypes.TryGetValue(JassKeyword.Integer, out var customTypes) && customTypes.ContainsKey(expectedType))
+            {
+                functionParameter = new TriggerFunctionParameter
+                {
+                    Type = TriggerFunctionParameterType.String,
+                    Value = fourCCLiteralExpression.Token.Text[1..^1],
+                };
+
+                return true;
+            }
+
+            functionParameter = null;
+            return false;
+        }
+
+        private bool TryDecompileFourCCLiteralExpression(
+            JassLiteralExpressionSyntax fourCCLiteralExpression,
+            [NotNullWhen(true)] out List<DecompileOption>? decompileOptions)
+        {
+            if (Context.TriggerData.TriggerTypes.TryGetValue(JassKeyword.Integer, out var customTypes))
+            {
+                decompileOptions = new();
+                foreach (var customType in customTypes)
+                {
+                    decompileOptions.Add(new DecompileOption
+                    {
+                        Type = customType.Key,
+                        Parameter = new TriggerFunctionParameter
+                        {
+                            Type = TriggerFunctionParameterType.String,
+                            Value = fourCCLiteralExpression.Token.Text[1..^1],
+                        },
+                    });
+                }
+
+                return true;
+            }
+
+            decompileOptions = null;
+            return false;
+        }
+    }
+}

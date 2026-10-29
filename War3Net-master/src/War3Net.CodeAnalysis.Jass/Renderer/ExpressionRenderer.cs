@@ -1,0 +1,22 @@
+﻿namespace War3Net.CodeAnalysis.Jass
+{
+    public partial class JassRenderer
+    {
+        public void Render(JassExpressionSyntax expression)
+        {
+            switch (expression)
+            {
+                case JassLiteralExpressionSyntax literalExpression: Render(literalExpression); break;
+                case JassFunctionReferenceExpressionSyntax functionReferenceExpression: Render(functionReferenceExpression); break;
+                case JassInvocationExpressionSyntax invocationExpression: Render(invocationExpression); break;
+                case JassElementAccessExpressionSyntax elementAccessExpression: Render(elementAccessExpression); break;
+                case JassIdentifierNameSyntax identifierName: Render(identifierName); break;
+                case JassParenthesizedExpressionSyntax parenthesizedExpression: Render(parenthesizedExpression); break;
+                case JassUnaryExpressionSyntax unaryExpression: Render(unaryExpression); break;
+                case JassBinaryExpressionSyntax binaryExpression: Render(binaryExpression); break;
+
+                default: throw new NotSupportedException();
+            }
+        }
+    }
+}

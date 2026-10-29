@@ -1,0 +1,64 @@
+﻿namespace War3Net.CodeAnalysis.VJass.Syntax
+{
+    public class VJassArrayDeclaratorSyntax : VJassVariableOrArrayDeclaratorSyntax
+    {
+        internal VJassArrayDeclaratorSyntax(
+            VJassTypeSyntax type,
+            VJassSyntaxToken arrayToken,
+            VJassIdentifierNameSyntax identifierName)
+        {
+            Type = type;
+            ArrayToken = arrayToken;
+            IdentifierName = identifierName;
+        }
+
+        public VJassTypeSyntax Type { get; }
+
+        public VJassSyntaxToken ArrayToken { get; }
+
+        public VJassIdentifierNameSyntax IdentifierName { get; }
+
+        public override bool IsEquivalentTo([NotNullWhen(true)] VJassSyntaxNode? other)
+        {
+            return other is VJassArrayDeclaratorSyntax arrayDeclarator
+                && Type.IsEquivalentTo(arrayDeclarator.Type)
+                && IdentifierName.IsEquivalentTo(arrayDeclarator.IdentifierName);
+        }
+
+        public override void WriteTo(TextWriter writer)
+        {
+            Type.WriteTo(writer);
+            ArrayToken.WriteTo(writer);
+            IdentifierName.WriteTo(writer);
+        }
+
+        public override void ProcessTo(TextWriter writer, VJassPreprocessorContext context)
+        {
+            Type.ProcessTo(writer, context);
+            ArrayToken.ProcessTo(writer, context);
+            IdentifierName.ProcessTo(writer, context);
+        }
+
+        public override string ToString() => $"{Type} {ArrayToken} {IdentifierName}";
+
+        public override VJassSyntaxToken GetFirstToken() => Type.GetFirstToken();
+
+        public override VJassSyntaxToken GetLastToken() => IdentifierName.GetLastToken();
+
+        protected internal override VJassArrayDeclaratorSyntax ReplaceFirstToken(VJassSyntaxToken newToken)
+        {
+            return new VJassArrayDeclaratorSyntax(
+                Type.ReplaceFirstToken(newToken),
+                ArrayToken,
+                IdentifierName);
+        }
+
+        protected internal override VJassArrayDeclaratorSyntax ReplaceLastToken(VJassSyntaxToken newToken)
+        {
+            return new VJassArrayDeclaratorSyntax(
+                Type,
+                ArrayToken,
+                IdentifierName.ReplaceLastToken(newToken));
+        }
+    }
+}

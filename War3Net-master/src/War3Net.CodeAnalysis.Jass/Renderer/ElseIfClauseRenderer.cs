@@ -1,0 +1,13 @@
+﻿namespace War3Net.CodeAnalysis.Jass
+{
+    public partial class JassRenderer
+    {
+        public void Render(JassElseIfClauseSyntax elseIfClause)
+        {
+            Render(elseIfClause.ElseIfClauseDeclarator);
+            Indent();
+            Render(elseIfClause.Statements);
+            Outdent();
+        }
+    }
+}

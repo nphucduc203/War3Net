@@ -1,0 +1,45 @@
+﻿namespace War3Net.CodeAnalysis.Jass.Syntax
+{
+    public abstract class JassSyntaxNode
+    {
+        internal JassSyntaxNode()
+        {
+        }
+
+        public abstract JassSyntaxKind SyntaxKind { get; }
+
+        /// <summary>
+        /// Determines if two nodes are the same, disregarding trivia differences.
+        /// </summary>
+        public abstract bool IsEquivalentTo([NotNullWhen(true)] JassSyntaxNode? other);
+
+        public abstract void WriteTo(TextWriter writer);
+
+        public abstract IEnumerable<JassSyntaxNode> GetChildNodes();
+
+        public abstract IEnumerable<JassSyntaxToken> GetChildTokens();
+
+        public abstract IEnumerable<JassSyntaxNodeOrToken> GetChildNodesAndTokens();
+
+        public abstract IEnumerable<JassSyntaxNode> GetDescendantNodes();
+
+        public abstract IEnumerable<JassSyntaxToken> GetDescendantTokens();
+
+        public abstract IEnumerable<JassSyntaxNodeOrToken> GetDescendantNodesAndTokens();
+
+        public abstract JassSyntaxToken GetFirstToken();
+
+        public abstract JassSyntaxToken GetLastToken();
+
+        protected internal abstract JassSyntaxNode ReplaceFirstToken(JassSyntaxToken newToken);
+
+        protected internal abstract JassSyntaxNode ReplaceLastToken(JassSyntaxToken newToken);
+
+        public string ToFullString()
+        {
+            using var writer = new StringWriter();
+            WriteTo(writer);
+            return writer.ToString();
+        }
+    }
+}

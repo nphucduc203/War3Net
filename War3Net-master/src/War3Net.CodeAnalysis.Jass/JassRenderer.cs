@@ -1,0 +1,68 @@
+﻿namespace War3Net.CodeAnalysis.Jass
+{
+    [Obsolete("Use NormalizeWhitespace() and JassSyntaxNode.WriteTo()")]
+    public partial class JassRenderer
+    {
+        private readonly TextWriter _writer;
+        private readonly JassRendererOptions _options;
+
+        private int _currentIndentation;
+        private bool _currentLineIndented;
+
+        public JassRenderer(TextWriter writer)
+        {
+            _writer = writer;
+            _options = JassRendererOptions.Default;
+        }
+
+        public JassRenderer(TextWriter writer, JassRendererOptions options)
+        {
+            _writer = writer;
+            _options = options;
+        }
+
+        public void RenderLine(string value) => _writer.WriteLine(value);
+
+        public void RenderNewLine() => WriteLine();
+
+        private void WriteSpace()
+        {
+            if (_currentLineIndented)
+            {
+                _writer.Write(' ');
+            }
+        }
+
+        private void Write(string s)
+        {
+            if (!_currentLineIndented)
+            {
+                WriteIndentation();
+            }
+
+            _writer.Write(s);
+        }
+
+        private void WriteLine()
+        {
+            _writer.Write(_options.NewLineString);
+            _currentLineIndented = false;
+        }
+
+        private void WriteIndentation()
+        {
+            _currentLineIndented = true;
+            _writer.Write(string.Concat(Enumerable.Repeat(_options.IndentationString, _currentIndentation)));
+        }
+
+        private void Indent()
+        {
+            _currentIndentation++;
+        }
+
+        private void Outdent()
+        {
+            _currentIndentation--;
+        }
+    }
+}

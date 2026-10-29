@@ -1,0 +1,22 @@
+﻿namespace War3Net.Build.Object
+{
+    public sealed partial class LevelObjectModification
+    {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="LevelObjectModification"/> class.
+        /// </summary>
+        public LevelObjectModification()
+        {
+        }
+
+        public int OldId { get; set; }
+
+        public int NewId { get; set; }
+
+        public List<int> Unk { get; init; } = new();
+
+        public List<LevelObjectDataModification> Modifications { get; init; } = new();
+
+        public override string ToString() => NewId == 0 ? OldId.ToRawcode() : $"{NewId.ToRawcode()}:{OldId.ToRawcode()}";
+    }
+}

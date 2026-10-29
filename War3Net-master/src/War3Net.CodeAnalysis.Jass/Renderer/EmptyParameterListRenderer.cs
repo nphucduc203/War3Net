@@ -1,0 +1,12 @@
+﻿namespace War3Net.CodeAnalysis.Jass
+{
+    public partial class JassRenderer
+    {
+        public void Render(JassEmptyParameterListSyntax emptyParameterList)
+        {
+            Render(emptyParameterList.TakesToken);
+            WriteSpace();
+            Render(emptyParameterList.NothingToken);
+        }
+    }
+}

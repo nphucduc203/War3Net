@@ -1,0 +1,24 @@
+﻿namespace War3Net.CodeAnalysis.Jass
+{
+    public abstract partial class JassSyntaxRewriter
+    {
+        /// <param name="invocationExpression">The <see cref="JassInvocationExpressionSyntax"/> to rewrite.</param>
+        /// <param name="result">The rewritten <see cref="JassExpressionSyntax"/>, or the input <paramref name="invocationExpression"/> if it wasn't rewritten.</param>
+        /// <returns><see langword="true"/> if the <paramref name="invocationExpression"/> was rewritten to <paramref name="result"/>, otherwise <see langword="false"/>.</returns>
+        protected virtual bool RewriteInvocationExpression(JassInvocationExpressionSyntax invocationExpression, out JassExpressionSyntax result)
+        {
+            if (RewriteIdentifierName(invocationExpression.IdentifierName, out var identifierName) |
+                RewriteArgumentList(invocationExpression.ArgumentList, out var argumentList))
+            {
+                result = new JassInvocationExpressionSyntax(
+                    identifierName,
+                    argumentList);
+
+                return true;
+            }
+
+            result = invocationExpression;
+            return false;
+        }
+    }
+}

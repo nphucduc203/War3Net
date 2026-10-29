@@ -1,0 +1,54 @@
+﻿namespace War3Net.Build
+{
+    public partial class MapScriptBuilder
+    {
+        protected internal virtual void GenerateTriggerVariables(Map map, IndentedTextWriter writer)
+        {
+            if (map is null)
+            {
+                throw new ArgumentNullException(nameof(map));
+            }
+
+            if (writer is null)
+            {
+                throw new ArgumentNullException(nameof(writer));
+            }
+
+            var mapTriggers = map.Triggers;
+            if (mapTriggers is null)
+            {
+                return;
+            }
+
+            foreach (var triggerItem in mapTriggers.TriggerItems.Where(ShouldGenerateTriggerVariable))
+            {
+                writer.WriteAlignedGlobal(
+                    TypeName.Trigger,
+                    triggerItem.GetVariableName(),
+                    JassKeyword.Null);
+            }
+        }
+
+        protected internal virtual bool ShouldGenerateTriggerVariables(Map map)
+        {
+            if (map is null)
+            {
+                throw new ArgumentNullException(nameof(map));
+            }
+
+            return map.Triggers is not null
+                && map.Triggers.TriggerItems.Any(ShouldGenerateTriggerVariable);
+        }
+
+        protected internal virtual bool ShouldGenerateTriggerVariable(TriggerItem triggerItem)
+        {
+            if (triggerItem is null)
+            {
+                throw new ArgumentNullException(nameof(triggerItem));
+            }
+
+            return triggerItem is TriggerDefinition triggerDefinition
+                && !triggerDefinition.IsComment;
+        }
+    }
+}

@@ -1,0 +1,66 @@
+﻿namespace War3Net.CodeAnalysis.VJass.Syntax
+{
+    public class VJassReturnStatementSyntax : VJassStatementSyntax
+    {
+        public static readonly VJassReturnStatementSyntax Empty = new(
+            new VJassSyntaxToken(VJassSyntaxKind.ReturnKeyword, VJassKeyword.Return, VJassSyntaxTriviaList.Empty),
+            null);
+
+        internal VJassReturnStatementSyntax(
+            VJassSyntaxToken returnToken,
+            VJassExpressionSyntax? value)
+        {
+            ReturnToken = returnToken;
+            Value = value;
+        }
+
+        public VJassSyntaxToken ReturnToken { get; }
+
+        public VJassExpressionSyntax? Value { get; }
+
+        public override bool IsEquivalentTo([NotNullWhen(true)] VJassSyntaxNode? other)
+        {
+            return other is VJassReturnStatementSyntax returnStatement
+                && Value.NullableEquivalentTo(returnStatement.Value);
+        }
+
+        public override void WriteTo(TextWriter writer)
+        {
+            ReturnToken.WriteTo(writer);
+            Value?.WriteTo(writer);
+        }
+
+        public override void ProcessTo(TextWriter writer, VJassPreprocessorContext context)
+        {
+            ReturnToken.ProcessTo(writer, context);
+            Value?.ProcessTo(writer, context);
+        }
+
+        public override string ToString() => $"{ReturnToken}{Value.OptionalPrefixed()}";
+
+        public override VJassSyntaxToken GetFirstToken() => ReturnToken;
+
+        public override VJassSyntaxToken GetLastToken() => Value?.GetLastToken() ?? ReturnToken;
+
+        protected internal override VJassReturnStatementSyntax ReplaceFirstToken(VJassSyntaxToken newToken)
+        {
+            return new VJassReturnStatementSyntax(
+                newToken,
+                Value);
+        }
+
+        protected internal override VJassReturnStatementSyntax ReplaceLastToken(VJassSyntaxToken newToken)
+        {
+            if (Value is not null)
+            {
+                return new VJassReturnStatementSyntax(
+                    ReturnToken,
+                    Value.ReplaceLastToken(newToken));
+            }
+
+            return new VJassReturnStatementSyntax(
+                newToken,
+                null);
+        }
+    }
+}

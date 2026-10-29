@@ -1,0 +1,35 @@
+﻿namespace War3Net.CodeAnalysis.Jass
+{
+    public static partial class JassSyntaxFactory
+    {
+        public static JassElseClauseSyntax ElseClause(params JassStatementSyntax[] statements)
+        {
+            return new JassElseClauseSyntax(
+                Token(JassSyntaxKind.ElseKeyword),
+                statements.ToImmutableArray());
+        }
+
+        public static JassElseClauseSyntax ElseClause(IEnumerable<JassStatementSyntax> statements)
+        {
+            return new JassElseClauseSyntax(
+                Token(JassSyntaxKind.ElseKeyword),
+                statements.ToImmutableArray());
+        }
+
+        public static JassElseClauseSyntax ElseClause(ImmutableArray<JassStatementSyntax> statements)
+        {
+            return new JassElseClauseSyntax(
+                Token(JassSyntaxKind.ElseKeyword),
+                statements);
+        }
+
+        public static JassElseClauseSyntax ElseClause(JassSyntaxToken elseToken, ImmutableArray<JassStatementSyntax> statements)
+        {
+            ThrowHelper.ThrowIfInvalidToken(elseToken, JassSyntaxKind.ElseKeyword);
+
+            return new JassElseClauseSyntax(
+                elseToken,
+                statements);
+        }
+    }
+}

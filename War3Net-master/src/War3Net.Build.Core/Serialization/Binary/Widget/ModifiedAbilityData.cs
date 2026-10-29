@@ -1,0 +1,24 @@
+﻿namespace War3Net.Build.Widget
+{
+    public sealed partial class ModifiedAbilityData
+    {
+        internal ModifiedAbilityData(BinaryReader reader, MapWidgetsFormatVersion formatVersion, MapWidgetsSubVersion subVersion, bool useNewFormat)
+        {
+            ReadFrom(reader, formatVersion, subVersion, useNewFormat);
+        }
+
+        internal void ReadFrom(BinaryReader reader, MapWidgetsFormatVersion formatVersion, MapWidgetsSubVersion subVersion, bool useNewFormat)
+        {
+            AbilityId = reader.ReadInt32();
+            IsAutocastActive = reader.ReadBool();
+            HeroAbilityLevel = reader.ReadInt32();
+        }
+
+        internal void WriteTo(BinaryWriter writer, MapWidgetsFormatVersion formatVersion, MapWidgetsSubVersion subVersion, bool useNewFormat)
+        {
+            writer.Write(AbilityId);
+            writer.WriteBool(IsAutocastActive);
+            writer.Write(HeroAbilityLevel);
+        }
+    }
+}

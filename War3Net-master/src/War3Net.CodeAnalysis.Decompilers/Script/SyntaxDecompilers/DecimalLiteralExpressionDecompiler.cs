@@ -1,0 +1,57 @@
+﻿namespace War3Net.CodeAnalysis.Decompilers
+{
+    public partial class JassScriptDecompiler
+    {
+        private bool TryDecompileDecimalLiteralExpression(
+            JassLiteralExpressionSyntax decimalLiteralExpression,
+            string expectedType,
+            [NotNullWhen(true)] out TriggerFunctionParameter? functionParameter)
+        {
+            if (string.Equals(expectedType, JassKeyword.Integer, StringComparison.Ordinal) ||
+                string.Equals(expectedType, JassKeyword.Real, StringComparison.Ordinal))
+            {
+                functionParameter = new TriggerFunctionParameter
+                {
+                    Type = TriggerFunctionParameterType.String,
+                    Value = decimalLiteralExpression.Token.Text,
+                };
+
+                return true;
+            }
+
+            functionParameter = null;
+            return false;
+        }
+
+        private bool TryDecompileDecimalLiteralExpression(
+            JassLiteralExpressionSyntax decimalLiteralExpression,
+            [NotNullWhen(true)] out List<DecompileOption>? decompileOptions)
+        {
+            var value = decimalLiteralExpression.Token.Text;
+
+            decompileOptions = new();
+
+            decompileOptions.Add(new DecompileOption
+            {
+                Type = JassKeyword.Integer,
+                Parameter = new TriggerFunctionParameter
+                {
+                    Type = TriggerFunctionParameterType.String,
+                    Value = value,
+                },
+            });
+
+            decompileOptions.Add(new DecompileOption
+            {
+                Type = JassKeyword.Real,
+                Parameter = new TriggerFunctionParameter
+                {
+                    Type = TriggerFunctionParameterType.String,
+                    Value = value,
+                },
+            });
+
+            return true;
+        }
+    }
+}

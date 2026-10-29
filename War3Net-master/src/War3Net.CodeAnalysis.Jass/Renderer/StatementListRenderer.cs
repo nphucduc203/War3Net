@@ -1,0 +1,13 @@
+﻿namespace War3Net.CodeAnalysis.Jass
+{
+    public partial class JassRenderer
+    {
+        public void Render(ImmutableArray<JassStatementSyntax> statementList)
+        {
+            foreach (var statement in statementList)
+            {
+                Render(statement);
+            }
+        }
+    }
+}

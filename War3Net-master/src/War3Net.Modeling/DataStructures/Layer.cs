@@ -1,0 +1,21 @@
+﻿namespace War3Net.Modeling.DataStructures
+{
+    public struct Layer
+    {
+        public FilterMode FilterMode { get; set; }
+
+        public LayerShading ShadingFlags { get; set; }
+
+        public uint TextureId { get; set; }
+
+        public uint TextureAnimationId { get; set; }
+
+        public uint CoordId { get; set; }
+
+        public float Alpha { get; set; }
+
+        public AnimationChannel<uint>? TextureIds { get; set; }
+
+        public AnimationChannel<float>? Alphas { get; set; }
+    }
+}

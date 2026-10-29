@@ -1,0 +1,41 @@
+﻿namespace War3Net.Runtime.Enums.Object
+{
+    public sealed class AbilityIntegerLevelArrayField : Handle
+    {
+        private static readonly Dictionary<int, AbilityIntegerLevelArrayField> _fields = GetTypes().ToDictionary(t => (int)t, t => new AbilityIntegerLevelArrayField(t));
+
+        private readonly Type _type;
+
+        private AbilityIntegerLevelArrayField(Type type)
+        {
+            _type = type;
+        }
+
+        public enum Type
+        {
+        }
+
+        public static implicit operator Type(AbilityIntegerLevelArrayField abilityIntegerLevelArrayField) => abilityIntegerLevelArrayField._type;
+
+        public static explicit operator int(AbilityIntegerLevelArrayField abilityIntegerLevelArrayField) => (int)abilityIntegerLevelArrayField._type;
+
+        public static AbilityIntegerLevelArrayField GetAbilityIntegerLevelArrayField(int i)
+        {
+            if (!_fields.TryGetValue(i, out var abilityIntegerLevelArrayField))
+            {
+                abilityIntegerLevelArrayField = new AbilityIntegerLevelArrayField((Type)i);
+                _fields.Add(i, abilityIntegerLevelArrayField);
+            }
+
+            return abilityIntegerLevelArrayField;
+        }
+
+        private static IEnumerable<Type> GetTypes()
+        {
+            foreach (Type type in Enum.GetValues(typeof(Type)))
+            {
+                yield return type;
+            }
+        }
+    }
+}

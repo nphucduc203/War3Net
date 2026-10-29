@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <TargetFrameworks>$(TfmGroupDotNetWindows)</TargetFrameworks>
+    <RootNamespace>War3Net.Runtime</RootNamespace>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Description>C# implementation of Warcraft III's backend code.</Description>
+    <PackageTags>modding;runtime;warcraft3;wc3</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NAudio" />
+    <PackageReference Include="OptimizedPriorityQueue" />
+    <PackageReference Include="Serilog.Sinks.Console" />
+    <PackageReference Include="Serilog.Sinks.File" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(PUBLISH)'!='true'">
+    <ProjectReference Include="..\War3Net.Build.Core\War3Net.Build.Core.csproj" />
+    <ProjectReference Include="..\War3Net.Rendering\War3Net.Rendering.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(PUBLISH)'=='true'">
+    <PackageReference Include="War3Net.Build.Core" />
+    <PackageReference Include="War3Net.Rendering" />
+  </ItemGroup>
+
+</Project>

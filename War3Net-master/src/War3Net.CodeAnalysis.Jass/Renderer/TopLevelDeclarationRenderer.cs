@@ -1,0 +1,18 @@
+﻿namespace War3Net.CodeAnalysis.Jass
+{
+    public partial class JassRenderer
+    {
+        public void Render(JassTopLevelDeclarationSyntax declaration)
+        {
+            switch (declaration)
+            {
+                case JassTypeDeclarationSyntax typeDeclaration: Render(typeDeclaration); break;
+                case JassGlobalsDeclarationSyntax globalsDeclaration: Render(globalsDeclaration); break;
+                case JassNativeFunctionDeclarationSyntax nativeFunctionDeclaration: Render(nativeFunctionDeclaration); break;
+                case JassFunctionDeclarationSyntax functionDeclaration: Render(functionDeclaration); break;
+
+                default: throw new NotSupportedException();
+            }
+        }
+    }
+}

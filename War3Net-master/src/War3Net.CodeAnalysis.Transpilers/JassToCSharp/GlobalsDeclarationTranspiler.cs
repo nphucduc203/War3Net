@@ -1,0 +1,39 @@
+﻿namespace War3Net.CodeAnalysis.Transpilers
+{
+    public partial class JassToCSharpTranspiler
+    {
+        public IEnumerable<MemberDeclarationSyntax> Transpile(JassGlobalsDeclarationSyntax globalsDeclaration)
+        {
+            var declarations = globalsDeclaration.GlobalDeclarations;
+            for (var i = 0; i < declarations.Length; i++)
+            {
+                if (i == 0)
+                {
+                    if (i + 1 == declarations.Length)
+                    {
+                        yield return Transpile(
+                            MergeTrivia(globalsDeclaration.GlobalsToken, declarations[i].GetLeadingTrivia()),
+                            declarations[i],
+                            MergeTrivia(declarations[i].GetTrailingTrivia(), globalsDeclaration.EndGlobalsToken));
+                    }
+                    else
+                    {
+                        yield return Transpile(
+                            MergeTrivia(globalsDeclaration.GlobalsToken, declarations[i].GetLeadingTrivia()),
+                            declarations[i]);
+                    }
+                }
+                else if (i + 1 == declarations.Length)
+                {
+                    yield return Transpile(
+                        declarations[i],
+                        MergeTrivia(declarations[i].GetTrailingTrivia(), globalsDeclaration.EndGlobalsToken));
+                }
+                else
+                {
+                    yield return Transpile(declarations[i]);
+                }
+            }
+        }
+    }
+}

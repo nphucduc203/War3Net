@@ -1,0 +1,33 @@
+# Build output
+**/bin/
+**/obj/
+.vs/
+
+# Local machine settings (copy app/settings.example.json)
+app/settings.json
+
+# Local screenshots contain game assets; keep them out of public source control
+artifacts/
+
+# Research checkouts, not part of the engine
+open-realm-main/
+openwarcraft3-main/
+YDWE-master/
+
+# Session prompts
+master_prompt.txt
+ydwe_prompt.txt
+
+# Vendored War3Net: only sources and build props are needed
+War3Net-master/tests/
+War3Net-master/assets/
+War3Net-master/perf/
+War3Net-master/tools/
+War3Net-master/docs/
+War3Net-master/submodules/
+War3Net-master/ingest.txt
+War3Net-master/VERSION_UPDATE_GUIDE.md
+War3Net-master/*.slnx
+War3Net-master/*.slnf
+
+*.user

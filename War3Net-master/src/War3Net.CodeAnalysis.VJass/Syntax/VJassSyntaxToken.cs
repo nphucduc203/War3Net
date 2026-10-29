@@ -1,0 +1,59 @@
+﻿namespace War3Net.CodeAnalysis.VJass.Syntax
+{
+    public class VJassSyntaxToken
+    {
+        internal VJassSyntaxToken(
+            VJassSyntaxKind syntaxKind,
+            string text,
+            VJassSyntaxTriviaList trailingTrivia)
+        {
+            LeadingTrivia = VJassSyntaxTriviaList.Empty;
+            SyntaxKind = syntaxKind;
+            Text = text;
+            TrailingTrivia = trailingTrivia;
+        }
+
+        internal VJassSyntaxToken(
+            VJassSyntaxTriviaList leadingTrivia,
+            VJassSyntaxKind syntaxKind,
+            string text,
+            VJassSyntaxTriviaList trailingTrivia)
+        {
+            LeadingTrivia = leadingTrivia;
+            SyntaxKind = syntaxKind;
+            Text = text;
+            TrailingTrivia = trailingTrivia;
+        }
+
+        public VJassSyntaxTriviaList LeadingTrivia { get; }
+
+        public VJassSyntaxKind SyntaxKind { get; }
+
+        public string Text { get; }
+
+        public VJassSyntaxTriviaList TrailingTrivia { get; }
+
+        public bool IsEquivalentTo([NotNullWhen(true)] VJassSyntaxToken? other)
+        {
+            return other is not null
+                && SyntaxKind == other.SyntaxKind
+                && string.Equals(Text, other.Text, StringComparison.Ordinal);
+        }
+
+        public void WriteTo(TextWriter writer)
+        {
+            LeadingTrivia.WriteTo(writer);
+            writer.Write(Text);
+            TrailingTrivia.WriteTo(writer);
+        }
+
+        public void ProcessTo(TextWriter writer, VJassPreprocessorContext context)
+        {
+            LeadingTrivia.ProcessTo(writer, context);
+            writer.Write(Text);
+            TrailingTrivia.ProcessTo(writer, context);
+        }
+
+        public override string ToString() => Text;
+    }
+}

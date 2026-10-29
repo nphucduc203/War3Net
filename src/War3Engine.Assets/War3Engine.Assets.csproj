@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Warcraft III asset resolution and format reading for the War3Engine.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\War3Engine.Core\War3Engine.Core.csproj" />
+    <ProjectReference Include="..\..\War3Net-master\src\War3Net.IO.Mpq\War3Net.IO.Mpq.csproj" />
+    <ProjectReference Include="..\..\War3Net-master\src\War3Net.IO.Compression\War3Net.IO.Compression.csproj" />
+    <ProjectReference Include="..\..\War3Net-master\src\War3Net.Drawing.Blp\War3Net.Drawing.Blp.csproj" />
+    <ProjectReference Include="..\..\War3Net-master\src\War3Net.Modeling\War3Net.Modeling.csproj" />
+    <ProjectReference Include="..\..\War3Net-master\src\War3Net.Common\War3Net.Common.csproj" />
+    <ProjectReference Include="..\..\War3Net-master\src\War3Net.IO.Slk\War3Net.IO.Slk.csproj" />
+    <ProjectReference Include="..\..\War3Net-master\src\War3Net.Build.Core\War3Net.Build.Core.csproj" />
+  </ItemGroup>
+
+</Project>

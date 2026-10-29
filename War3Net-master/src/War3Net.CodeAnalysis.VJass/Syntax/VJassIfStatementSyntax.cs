@@ -1,0 +1,73 @@
+﻿namespace War3Net.CodeAnalysis.VJass.Syntax
+{
+    public class VJassIfStatementSyntax : VJassStatementSyntax
+    {
+        internal VJassIfStatementSyntax(
+            VJassStatementIfClauseSyntax ifClause,
+            ImmutableArray<VJassStatementElseIfClauseSyntax> elseIfClauses,
+            VJassStatementElseClauseSyntax? elseClause,
+            VJassSyntaxToken endIfToken)
+        {
+            IfClause = ifClause;
+            ElseIfClauses = elseIfClauses;
+            ElseClause = elseClause;
+            EndIfToken = endIfToken;
+        }
+
+        public VJassStatementIfClauseSyntax IfClause { get; }
+
+        public ImmutableArray<VJassStatementElseIfClauseSyntax> ElseIfClauses { get; }
+
+        public VJassStatementElseClauseSyntax? ElseClause { get; }
+
+        public VJassSyntaxToken EndIfToken { get; }
+
+        public override bool IsEquivalentTo([NotNullWhen(true)] VJassSyntaxNode? other)
+        {
+            return other is VJassIfStatementSyntax ifStatement
+                && IfClause.IsEquivalentTo(ifStatement.IfClause)
+                && ElseIfClauses.IsEquivalentTo(ifStatement.ElseIfClauses)
+                && ElseClause.NullableEquivalentTo(ifStatement.ElseClause);
+        }
+
+        public override void WriteTo(TextWriter writer)
+        {
+            IfClause.WriteTo(writer);
+            ElseIfClauses.WriteTo(writer);
+            ElseClause?.WriteTo(writer);
+            EndIfToken.WriteTo(writer);
+        }
+
+        public override void ProcessTo(TextWriter writer, VJassPreprocessorContext context)
+        {
+            IfClause.ProcessTo(writer, context);
+            ElseIfClauses.ProcessTo(writer, context);
+            ElseClause?.ProcessTo(writer, context);
+            EndIfToken.ProcessTo(writer, context);
+        }
+
+        public override string ToString() => IfClause.ToString();
+
+        public override VJassSyntaxToken GetFirstToken() => IfClause.GetFirstToken();
+
+        public override VJassSyntaxToken GetLastToken() => EndIfToken;
+
+        protected internal override VJassIfStatementSyntax ReplaceFirstToken(VJassSyntaxToken newToken)
+        {
+            return new VJassIfStatementSyntax(
+                IfClause.ReplaceFirstToken(newToken),
+                ElseIfClauses,
+                ElseClause,
+                EndIfToken);
+        }
+
+        protected internal override VJassIfStatementSyntax ReplaceLastToken(VJassSyntaxToken newToken)
+        {
+            return new VJassIfStatementSyntax(
+                IfClause,
+                ElseIfClauses,
+                ElseClause,
+                newToken);
+        }
+    }
+}

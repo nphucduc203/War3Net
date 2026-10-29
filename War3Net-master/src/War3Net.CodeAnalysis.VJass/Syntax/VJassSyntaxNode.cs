@@ -1,0 +1,26 @@
+﻿namespace War3Net.CodeAnalysis.VJass.Syntax
+{
+    public abstract class VJassSyntaxNode
+    {
+        internal VJassSyntaxNode()
+        {
+        }
+
+        /// <summary>
+        /// Determines if two nodes are the same, disregarding trivia differences.
+        /// </summary>
+        public abstract bool IsEquivalentTo([NotNullWhen(true)] VJassSyntaxNode? other);
+
+        public abstract void WriteTo(TextWriter writer);
+
+        public abstract void ProcessTo(TextWriter writer, VJassPreprocessorContext context);
+
+        public abstract VJassSyntaxToken GetFirstToken();
+
+        public abstract VJassSyntaxToken GetLastToken();
+
+        protected internal abstract VJassSyntaxNode ReplaceFirstToken(VJassSyntaxToken newToken);
+
+        protected internal abstract VJassSyntaxNode ReplaceLastToken(VJassSyntaxToken newToken);
+    }
+}

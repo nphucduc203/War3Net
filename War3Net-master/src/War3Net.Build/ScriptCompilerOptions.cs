@@ -1,0 +1,214 @@
+﻿namespace War3Net.Build
+{
+    [Obsolete]
+    public sealed class ScriptCompilerOptions
+    {
+        public ScriptCompilerOptions(params string[] libraries)
+        {
+            FileFlags = new Dictionary<string, MpqFileFlags>();
+            DefaultFileFlags = MpqFileFlags.Exists;
+            Libraries = new List<string>(libraries);
+
+            SourceDirectory = string.Empty;
+            OutputDirectory = string.Empty;
+        }
+
+        public ScriptCompilerOptions(IEnumerable<string> libraries)
+            : this(libraries.ToArray())
+        {
+        }
+
+        public string SourceDirectory { get; set; }
+
+        public string OutputDirectory { get; set; }
+
+        /// <summary>
+        /// Gets or sets the path to clijasshelper.exe.
+        /// This property must be set when compiling vJass source code.
+        /// </summary>
+        public string? JasshelperCliPath { get; set; }
+
+        public string? CommonJPath { get; set; }
+
+        public string? BlizzardJPath { get; set; }
+
+        /// <summary>
+        /// If <see langword="true"/>, script files added through assets will be overwritten, even if <see cref="SourceDirectory"/> is null.
+        /// </summary>
+        public bool ForceCompile { get; set; }
+
+        /// <summary>
+        /// If <see langword="true"/>, .dll files from package references are decompiled into .cs files, so that they can be transpiled to lua.
+        /// Exceptions are made for System.* packages, *.Sources packages, and the Microsoft.NETCore.Platforms and NETStandard.Library packages.
+        /// This setting is ignored if either <see cref="DecompilePackages"/> or <see cref="ExcludeDecompilePackages"/> is not <see langword="null"/>.
+        /// </summary>
+        public bool DecompilePackageLibs { get; set; }
+
+        /// <summary>
+        /// Case-insensitive list (separated by ;) of package names for which the .dll file(s) should be decompiled into .cs files, so that they can be transpiled to lua.
+        /// Supports ? and * as wildcard characters.
+        /// </summary>
+        public string? DecompilePackages { get; set; }
+
+        /// <summary>
+        /// Case-insensitive list (separated by ;) of package names for which the .dll file(s) should NOT be decompiled into .cs files.
+        /// Supports ? and * as wildcard characters.
+        /// </summary>
+        public string? ExcludeDecompilePackages { get; set; }
+
+        /// <summary>
+        /// <see cref="Compiler.IsExportMetadata"/>.
+        /// </summary>
+        public bool ExportMetadata { get; set; }
+
+        public bool Debug { get; set; }
+
+        public bool Optimize { get; set; }
+
+        public bool Obfuscate { get; set; }
+
+        public Dictionary<string, MpqFileFlags> FileFlags { get; private set; }
+
+        public MpqFileFlags DefaultFileFlags { get; set; }
+
+        public MapInfo? MapInfo { get; set; }
+
+        public MapEnvironment? MapEnvironment { get; set; }
+
+        public MapDoodads? MapDoodads { get; set; }
+
+        public MapUnits? MapUnits { get; set; }
+
+        public MapRegions? MapRegions { get; set; }
+
+        public MapSounds? MapSounds { get; set; }
+
+        public MapPreviewIcons? MapIcons { get; set; }
+
+        public UnitObjectData? MapUnitData { get; set; }
+
+        public ItemObjectData? MapItemData { get; set; }
+
+        public DestructableObjectData? MapDestructableData { get; set; }
+
+        public DoodadObjectData? MapDoodadData { get; set; }
+
+        public AbilityObjectData? MapAbilityData { get; set; }
+
+        public BuffObjectData? MapBuffData { get; set; }
+
+        public UpgradeObjectData? MapUpgradeData { get; set; }
+
+        public MapCustomTextTriggers? MapCustomTextTriggers { get; set; }
+
+        public MapTriggers? MapTriggers { get; set; }
+
+        public TriggerStrings? MapTriggerStrings { get; set; }
+
+        public MapCameras? MapCameras { get; set; }
+
+        public MapPathingMap? MapPathingMap { get; set; }
+
+        public MapShadowMap? MapShadowMap { get; set; }
+
+        public string? LobbyMusic { get; set; }
+
+        public GamePatch? TargetPatch { get; set; }
+
+        internal List<string> Libraries { get; private set; }
+
+        public object? GetMapFile(string fileName)
+        {
+            return fileName switch
+            {
+                MapInfo.FileName => MapInfo,
+                MapEnvironment.FileName => MapEnvironment,
+                MapDoodads.FileName => MapDoodads,
+                MapUnits.FileName => MapUnits,
+                MapRegions.FileName => MapRegions,
+                MapSounds.FileName => MapSounds,
+                MapPreviewIcons.FileName => MapIcons,
+
+                UnitObjectData.MapFileName => MapUnitData,
+                ItemObjectData.MapFileName => MapItemData,
+                DestructableObjectData.MapFileName => MapDestructableData,
+                DoodadObjectData.MapFileName => MapDoodadData,
+                AbilityObjectData.MapFileName => MapAbilityData,
+                BuffObjectData.MapFileName => MapBuffData,
+                UpgradeObjectData.MapFileName => MapUpgradeData,
+
+                _ => null,
+            };
+        }
+
+        public bool SetMapFile(object file)
+        {
+            if (file is null)
+            {
+                return false;
+            }
+            else if (file is MapInfo mapInfo)
+            {
+                MapInfo = mapInfo;
+            }
+            else if (file is MapEnvironment mapEnvironment)
+            {
+                MapEnvironment = mapEnvironment;
+            }
+            else if (file is MapDoodads mapDoodads)
+            {
+                MapDoodads = mapDoodads;
+            }
+            else if (file is MapUnits mapUnits)
+            {
+                MapUnits = mapUnits;
+            }
+            else if (file is MapRegions mapRegions)
+            {
+                MapRegions = mapRegions;
+            }
+            else if (file is MapSounds mapSounds)
+            {
+                MapSounds = mapSounds;
+            }
+            else if (file is MapPreviewIcons mapIcons)
+            {
+                MapIcons = mapIcons;
+            }
+            else if (file is UnitObjectData mapUnitData)
+            {
+                MapUnitData = mapUnitData;
+            }
+            else if (file is ItemObjectData mapItemData)
+            {
+                MapItemData = mapItemData;
+            }
+            else if (file is DestructableObjectData mapDestructableData)
+            {
+                MapDestructableData = mapDestructableData;
+            }
+            else if (file is DoodadObjectData mapDoodadData)
+            {
+                MapDoodadData = mapDoodadData;
+            }
+            else if (file is AbilityObjectData mapAbilityData)
+            {
+                MapAbilityData = mapAbilityData;
+            }
+            else if (file is BuffObjectData mapBuffData)
+            {
+                MapBuffData = mapBuffData;
+            }
+            else if (file is UpgradeObjectData mapUpgradeData)
+            {
+                MapUpgradeData = mapUpgradeData;
+            }
+            else
+            {
+                throw new ArgumentException("The object is not a map file.", nameof(file));
+            }
+
+            return true;
+        }
+    }
+}

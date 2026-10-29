@@ -1,0 +1,24 @@
+﻿namespace War3Net.CodeAnalysis.Jass
+{
+    public static partial class JassSyntaxFactory
+    {
+        public static JassElementAccessClauseSyntax ElementAccessClause(JassExpressionSyntax expression)
+        {
+            return new JassElementAccessClauseSyntax(
+                Token(JassSyntaxKind.OpenBracketToken),
+                expression,
+                Token(JassSyntaxKind.CloseBracketToken));
+        }
+
+        public static JassElementAccessClauseSyntax ElementAccessClause(JassSyntaxToken openBracketToken, JassExpressionSyntax expression, JassSyntaxToken closeBracketToken)
+        {
+            ThrowHelper.ThrowIfInvalidToken(openBracketToken, JassSyntaxKind.OpenBracketToken);
+            ThrowHelper.ThrowIfInvalidToken(closeBracketToken, JassSyntaxKind.CloseBracketToken);
+
+            return new JassElementAccessClauseSyntax(
+                openBracketToken,
+                expression,
+                closeBracketToken);
+        }
+    }
+}

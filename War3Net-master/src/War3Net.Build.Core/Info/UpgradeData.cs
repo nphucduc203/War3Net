@@ -1,0 +1,23 @@
+﻿namespace War3Net.Build.Info
+{
+    public sealed partial class UpgradeData
+    {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="UpgradeData"/> class.
+        /// </summary>
+        public UpgradeData()
+        {
+        }
+
+        public Bitmask32 Players { get; set; }
+
+        public int Id { get; set; }
+
+        // 0-indexed
+        public int Level { get; set; }
+
+        public UpgradeAvailability Availability { get; set; }
+
+        public override string ToString() => Id.ToRawcode();
+    }
+}

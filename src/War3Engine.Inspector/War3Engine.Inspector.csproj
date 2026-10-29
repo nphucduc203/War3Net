@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <Description>Command-line diagnostics for Warcraft III assets and maps.</Description>
+    <AssemblyName>War3Engine.Inspector</AssemblyName>
+    <RootNamespace>War3Engine.Inspector</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\War3Engine.Core\War3Engine.Core.csproj" />
+    <ProjectReference Include="..\War3Engine.Assets\War3Engine.Assets.csproj" />
+  </ItemGroup>
+
+</Project>

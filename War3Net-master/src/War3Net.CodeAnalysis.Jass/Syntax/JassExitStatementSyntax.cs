@@ -1,0 +1,97 @@
+﻿namespace War3Net.CodeAnalysis.Jass.Syntax
+{
+    public class JassExitStatementSyntax : JassStatementSyntax
+    {
+        internal JassExitStatementSyntax(
+            JassSyntaxToken exitWhenToken,
+            JassExpressionSyntax condition)
+        {
+            ExitWhenToken = exitWhenToken;
+            Condition = condition;
+        }
+
+        public JassSyntaxToken ExitWhenToken { get; }
+
+        public JassExpressionSyntax Condition { get; }
+
+        public override JassSyntaxKind SyntaxKind => JassSyntaxKind.ExitStatement;
+
+        public override bool IsEquivalentTo([NotNullWhen(true)] JassSyntaxNode? other)
+        {
+            return other is JassExitStatementSyntax exitStatement
+                && Condition.IsEquivalentTo(exitStatement.Condition);
+        }
+
+        public override void WriteTo(TextWriter writer)
+        {
+            ExitWhenToken.WriteTo(writer);
+            Condition.WriteTo(writer);
+        }
+
+        public override IEnumerable<JassSyntaxNode> GetChildNodes()
+        {
+            yield return Condition;
+        }
+
+        public override IEnumerable<JassSyntaxToken> GetChildTokens()
+        {
+            yield return ExitWhenToken;
+        }
+
+        public override IEnumerable<JassSyntaxNodeOrToken> GetChildNodesAndTokens()
+        {
+            yield return ExitWhenToken;
+            yield return Condition;
+        }
+
+        public override IEnumerable<JassSyntaxNode> GetDescendantNodes()
+        {
+            yield return Condition;
+            foreach (var descendant in Condition.GetDescendantNodes())
+            {
+                yield return descendant;
+            }
+        }
+
+        public override IEnumerable<JassSyntaxToken> GetDescendantTokens()
+        {
+            yield return ExitWhenToken;
+
+            foreach (var descendant in Condition.GetDescendantTokens())
+            {
+                yield return descendant;
+            }
+        }
+
+        public override IEnumerable<JassSyntaxNodeOrToken> GetDescendantNodesAndTokens()
+        {
+            yield return ExitWhenToken;
+
+            yield return Condition;
+            foreach (var descendant in Condition.GetDescendantNodesAndTokens())
+            {
+                yield return descendant;
+            }
+        }
+
+        public override string ToString() => $"{ExitWhenToken} {Condition}";
+
+        public override JassSyntaxToken GetFirstToken() => ExitWhenToken;
+
+        public override JassSyntaxToken GetLastToken() => Condition.GetLastToken();
+
+        protected internal override JassExitStatementSyntax ReplaceFirstToken(JassSyntaxToken newToken)
+        {
+            return new JassExitStatementSyntax(
+                newToken,
+                Condition);
+        }
+
+        protected internal override JassExitStatementSyntax ReplaceLastToken(JassSyntaxToken newToken)
+        {
+            return new JassExitStatementSyntax(
+                ExitWhenToken,
+                Condition.ReplaceLastToken(newToken));
+        }
+    }
+}

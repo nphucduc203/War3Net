@@ -1,0 +1,56 @@
+﻿namespace War3Net.CodeAnalysis.VJass.Syntax
+{
+    public class VJassInvocationExpressionSyntax : VJassExpressionSyntax
+    {
+        internal VJassInvocationExpressionSyntax(
+            VJassExpressionSyntax expression,
+            VJassArgumentListSyntax argumentList)
+        {
+            Expression = expression;
+            ArgumentList = argumentList;
+        }
+
+        public VJassExpressionSyntax Expression { get; }
+
+        public VJassArgumentListSyntax ArgumentList { get; }
+
+        public override bool IsEquivalentTo([NotNullWhen(true)] VJassSyntaxNode? other)
+        {
+            return other is VJassInvocationExpressionSyntax invocationExpression
+                && Expression.IsEquivalentTo(invocationExpression.Expression)
+                && ArgumentList.IsEquivalentTo(invocationExpression.ArgumentList);
+        }
+
+        public override void WriteTo(TextWriter writer)
+        {
+            Expression.WriteTo(writer);
+            ArgumentList.WriteTo(writer);
+        }
+
+        public override void ProcessTo(TextWriter writer, VJassPreprocessorContext context)
+        {
+            Expression.ProcessTo(writer, context);
+            ArgumentList.ProcessTo(writer, context);
+        }
+
+        public override string ToString() => $"{Expression}{ArgumentList}";
+
+        public override VJassSyntaxToken GetFirstToken() => Expression.GetFirstToken();
+
+        public override VJassSyntaxToken GetLastToken() => ArgumentList.GetLastToken();
+
+        protected internal override VJassInvocationExpressionSyntax ReplaceFirstToken(VJassSyntaxToken newToken)
+        {
+            return new VJassInvocationExpressionSyntax(
+                Expression.ReplaceFirstToken(newToken),
+                ArgumentList);
+        }
+
+        protected internal override VJassInvocationExpressionSyntax ReplaceLastToken(VJassSyntaxToken newToken)
+        {
+            return new VJassInvocationExpressionSyntax(
+                Expression,
+                ArgumentList.ReplaceLastToken(newToken));
+        }
+    }
+}

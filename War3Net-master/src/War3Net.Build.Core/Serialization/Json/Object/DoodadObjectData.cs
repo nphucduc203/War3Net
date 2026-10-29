@@ -1,0 +1,61 @@
+﻿namespace War3Net.Build.Object
+{
+    [JsonConverter(typeof(JsonDoodadObjectDataConverter))]
+    public sealed partial class DoodadObjectData
+    {
+        internal DoodadObjectData(JsonElement jsonElement)
+        {
+            GetFrom(jsonElement);
+        }
+
+        internal DoodadObjectData(ref Utf8JsonReader reader)
+        {
+            ReadFrom(ref reader);
+        }
+
+        internal void GetFrom(JsonElement jsonElement)
+        {
+            FormatVersion = jsonElement.GetInt32<ObjectDataFormatVersion>(nameof(FormatVersion));
+
+            foreach (var element in jsonElement.EnumerateArray(nameof(BaseDoodads)))
+            {
+                BaseDoodads.Add(element.GetVariationObjectModification(FormatVersion));
+            }
+
+            foreach (var element in jsonElement.EnumerateArray(nameof(NewDoodads)))
+            {
+                NewDoodads.Add(element.GetVariationObjectModification(FormatVersion));
+            }
+        }
+
+        internal void ReadFrom(ref Utf8JsonReader reader)
+        {
+            GetFrom(JsonDocument.ParseValue(ref reader).RootElement);
+        }
+
+        internal void WriteTo(Utf8JsonWriter writer, JsonSerializerOptions options)
+        {
+            writer.WriteStartObject();
+
+            writer.WriteObject(nameof(FormatVersion), FormatVersion, options);
+
+            writer.WriteStartArray(nameof(BaseDoodads));
+            foreach (var doodad in BaseDoodads)
+            {
+                writer.Write(doodad, options, FormatVersion);
+            }
+
+            writer.WriteEndArray();
+
+            writer.WriteStartArray(nameof(NewDoodads));
+            foreach (var doodad in NewDoodads)
+            {
+                writer.Write(doodad, options, FormatVersion);
+            }
+
+            writer.WriteEndArray();
+
+            writer.WriteEndObject();
+        }
+    }
+}

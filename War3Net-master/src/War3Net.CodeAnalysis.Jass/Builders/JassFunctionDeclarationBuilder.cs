@@ -1,0 +1,22 @@
+﻿namespace War3Net.CodeAnalysis.Jass.Builders
+{
+    public class JassFunctionDeclarationBuilder : JassStatementListSyntaxBuilder
+    {
+        private readonly JassFunctionDeclaratorSyntax _functionDeclarator;
+
+        public JassFunctionDeclarationBuilder(JassFunctionDeclaratorSyntax functionDeclarator)
+        {
+            _functionDeclarator = functionDeclarator;
+        }
+
+        public JassFunctionDeclarationSyntax ToFunctionDeclaration(JassSyntaxToken endFunctionToken)
+        {
+            JassSyntaxFactory.ThrowHelper.ThrowIfInvalidToken(endFunctionToken, JassSyntaxKind.EndFunctionKeyword);
+
+            return new JassFunctionDeclarationSyntax(
+                _functionDeclarator,
+                BuildStatementList(),
+                endFunctionToken.PrependLeadingTrivia(BuildTriviaList()));
+        }
+    }
+}

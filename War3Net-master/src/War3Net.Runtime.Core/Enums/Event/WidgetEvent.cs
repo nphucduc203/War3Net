@@ -1,0 +1,42 @@
+﻿namespace War3Net.Runtime.Enums.Event
+{
+    public sealed class WidgetEvent : EventId
+    {
+        private static readonly Dictionary<int, WidgetEvent> _events = GetTypes().ToDictionary(t => (int)t, t => new WidgetEvent(t));
+
+        private readonly Type _type;
+
+        private WidgetEvent(Type type)
+        {
+            _type = type;
+        }
+
+        public enum Type
+        {
+            Death = 89,
+        }
+
+        public static implicit operator Type(WidgetEvent widgetEvent) => widgetEvent._type;
+
+        public static explicit operator int(WidgetEvent widgetEvent) => (int)widgetEvent._type;
+
+        public static WidgetEvent GetWidgetEvent(int i)
+        {
+            if (!_events.TryGetValue(i, out var widgetEvent))
+            {
+                widgetEvent = new WidgetEvent((Type)i);
+                _events.Add(i, widgetEvent);
+            }
+
+            return widgetEvent;
+        }
+
+        private static IEnumerable<Type> GetTypes()
+        {
+            foreach (Type type in Enum.GetValues(typeof(Type)))
+            {
+                yield return type;
+            }
+        }
+    }
+}

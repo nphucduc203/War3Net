@@ -1,0 +1,38 @@
+﻿namespace War3Net.Modeling.DataStructures
+{
+    public struct Attachment : INode
+    {
+        public Attachment(string name)
+            : this()
+        {
+            Name = name;
+        }
+
+        public string Path { get; set; }
+
+        public uint AttachmentId { get; set; }
+
+        public AnimationChannel<float>? Visibilities { get; set; }
+
+        /// <inheritdoc/>
+        public string Name { get; set; }
+
+        /// <inheritdoc/>
+        public uint ObjectId { get; set; }
+
+        /// <inheritdoc/>
+        public uint? ParentId { get; set; }
+
+        /// <inheritdoc/>
+        public NodeFlags Flags { get; set; }
+
+        /// <inheritdoc/>
+        public AnimationChannel<Vector3>? Translations { get; set; }
+
+        /// <inheritdoc/>
+        public AnimationChannel<Quaternion>? Rotations { get; set; }
+
+        /// <inheritdoc/>
+        public AnimationChannel<Vector3>? Scalings { get; set; }
+    }
+}

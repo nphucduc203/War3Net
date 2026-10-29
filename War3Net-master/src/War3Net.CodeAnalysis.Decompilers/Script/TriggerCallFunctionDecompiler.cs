@@ -1,0 +1,112 @@
+﻿namespace War3Net.CodeAnalysis.Decompilers
+{
+    public partial class JassScriptDecompiler
+    {
+        [Obsolete]
+        private bool TryDecompileTriggerCallFunction(JassInvocationExpressionSyntax invocationExpression, [NotNullWhen(true)] out TriggerFunction? callFunction)
+        {
+            if (Context.TriggerData.TriggerData.TriggerCalls.TryGetValue(invocationExpression.IdentifierName.Token.Text, out var triggerCall) &&
+                TryDecompileTriggerCallFunction(invocationExpression, triggerCall, out callFunction))
+            {
+                return true;
+            }
+
+            callFunction = null;
+            return false;
+        }
+
+        private bool TryDecompileTriggerCallFunction(
+            JassInvocationExpressionSyntax invocationExpression,
+            TriggerData.TriggerCall triggerCall,
+            [NotNullWhen(true)] out TriggerFunction? callFunction)
+        {
+            if (triggerCall.ArgumentTypes.Length == invocationExpression.ArgumentList.ArgumentList.Items.Length)
+            {
+                var function = new TriggerFunction
+                {
+                    Type = TriggerFunctionType.Call,
+                    IsEnabled = true,
+                    Name = invocationExpression.IdentifierName.Token.Text,
+                };
+
+                for (var i = 0; i < invocationExpression.ArgumentList.ArgumentList.Items.Length; i++)
+                {
+                    if (TryDecompileTriggerFunctionParameter(invocationExpression.ArgumentList.ArgumentList.Items[i], triggerCall.ArgumentTypes[i], out var functionParameter))
+                    {
+                        function.Parameters.Add(functionParameter);
+                    }
+                    else
+                    {
+                        callFunction = null;
+                        return false;
+                    }
+                }
+
+                callFunction = function;
+                return true;
+            }
+
+            callFunction = null;
+            return false;
+        }
+
+        private bool TryDecompileTriggerCallFunction(JassBinaryExpressionSyntax binaryExpression, string type, [NotNullWhen(true)] out TriggerFunction? callFunction)
+        {
+            var functionName = type switch
+            {
+                JassKeyword.Integer => "OperatorInt",
+                JassKeyword.Real => "OperatorReal",
+                JassKeyword.String => "OperatorString",
+
+                _ => throw new NotSupportedException(),
+            };
+
+            var argumentTypes = Context.TriggerData.TriggerData.TriggerCalls[functionName].ArgumentTypes;
+            if (argumentTypes.Length == 2)
+            {
+                if (string.Equals(type, JassKeyword.String, StringComparison.Ordinal) &&
+                    binaryExpression.SyntaxKind == JassSyntaxKind.AddExpression &&
+                    TryDecompileTriggerFunctionParameter(binaryExpression.Left, argumentTypes[0], out var leftFunctionParameter) &&
+                    TryDecompileTriggerFunctionParameter(binaryExpression.Right, argumentTypes[1], out var rightFunctionParameter))
+                {
+                    var function = new TriggerFunction
+                    {
+                        Type = TriggerFunctionType.Call,
+                        IsEnabled = true,
+                        Name = functionName,
+                    };
+
+                    function.Parameters.Add(leftFunctionParameter);
+                    function.Parameters.Add(rightFunctionParameter);
+
+                    callFunction = function;
+                    return true;
+                }
+            }
+            else if (argumentTypes.Length == 3)
+            {
+                if (TryDecompileTriggerFunctionParameter(binaryExpression.Left, argumentTypes[0], out var leftFunctionParameter) &&
+                    TryDecompileTriggerFunctionParameter(binaryExpression.OperatorToken, argumentTypes[1], out var operatorFunctionParameter) &&
+                    TryDecompileTriggerFunctionParameter(binaryExpression.Right, argumentTypes[2], out var rightFunctionParameter))
+                {
+                    var function = new TriggerFunction
+                    {
+                        Type = TriggerFunctionType.Call,
+                        IsEnabled = true,
+                        Name = functionName,
+                    };
+
+                    function.Parameters.Add(leftFunctionParameter);
+                    function.Parameters.Add(operatorFunctionParameter);
+                    function.Parameters.Add(rightFunctionParameter);
+
+                    callFunction = function;
+                    return true;
+                }
+            }
+
+            callFunction = null;
+            return false;
+        }
+    }
+}

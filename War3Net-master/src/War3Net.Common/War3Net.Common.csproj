@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(TfmGroupDotNet)</TargetFrameworks>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Description>Shared utilities for War3Net packages.</Description>
+    <PackageTags>modding;utilities;warcraft3;wc3</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Drawing.Common" />
+  </ItemGroup>
+
+</Project>

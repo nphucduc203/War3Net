@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(TfmGroupDotNet)</TargetFrameworks>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Description>Read and write .mdl and .mdx files.</Description>
+    <PackageTags>mdl;mdx;modding;warcraft3;wc3</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(PUBLISH)'!='true'">
+    <ProjectReference Include="..\War3Net.Common\War3Net.Common.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(PUBLISH)'=='true'">
+    <PackageReference Include="War3Net.Common" />
+  </ItemGroup>
+
+</Project>

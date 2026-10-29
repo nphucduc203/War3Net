@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "*.globalconfig": "ini",
+        "TriggerData.txt": "ini",
+        "TriggerData_*.txt": "ini"
+    }
+}

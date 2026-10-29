@@ -1,0 +1,22 @@
+﻿namespace War3Net.Build.Widget
+{
+    public sealed partial class RandomUnitAny : RandomUnitData
+    {
+        internal RandomUnitAny(BinaryReader reader, MapWidgetsFormatVersion formatVersion, MapWidgetsSubVersion subVersion, bool useNewFormat)
+        {
+            ReadFrom(reader, formatVersion, subVersion, useNewFormat);
+        }
+
+        internal void ReadFrom(BinaryReader reader, MapWidgetsFormatVersion formatVersion, MapWidgetsSubVersion subVersion, bool useNewFormat)
+        {
+            Level = reader.ReadInt24();
+            Class = reader.ReadByte<ItemClass>();
+        }
+
+        internal override void WriteTo(BinaryWriter writer, MapWidgetsFormatVersion formatVersion, MapWidgetsSubVersion subVersion, bool useNewFormat)
+        {
+            writer.WriteInt24(Level);
+            writer.Write((byte)Class);
+        }
+    }
+}

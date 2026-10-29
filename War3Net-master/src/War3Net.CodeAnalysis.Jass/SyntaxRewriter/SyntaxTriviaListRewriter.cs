@@ -1,0 +1,23 @@
+﻿namespace War3Net.CodeAnalysis.Jass
+{
+    public abstract partial class JassSyntaxRewriter
+    {
+        /// <param name="triviaList">The <see cref="JassSyntaxTriviaList"/> to rewrite.</param>
+        /// <param name="result">The rewritten <see cref="JassSyntaxTriviaList"/>, or the input <paramref name="triviaList"/> if it wasn't rewritten.</param>
+        /// <returns><see langword="true"/> if the <paramref name="triviaList"/> was rewritten to <paramref name="result"/>, otherwise <see langword="false"/>.</returns>
+        protected virtual bool RewriteLeadingTrivia(JassSyntaxTriviaList triviaList, out JassSyntaxTriviaList result)
+        {
+            result = triviaList;
+            return false;
+        }
+
+        /// <param name="triviaList">The <see cref="JassSyntaxTriviaList"/> to rewrite.</param>
+        /// <param name="result">The rewritten <see cref="JassSyntaxTriviaList"/>, or the input <paramref name="triviaList"/> if it wasn't rewritten.</param>
+        /// <returns><see langword="true"/> if the <paramref name="triviaList"/> was rewritten to <paramref name="result"/>, otherwise <see langword="false"/>.</returns>
+        protected virtual bool RewriteTrailingTrivia(JassSyntaxTriviaList triviaList, out JassSyntaxTriviaList result)
+        {
+            result = triviaList;
+            return false;
+        }
+    }
+}

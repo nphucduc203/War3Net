@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <TargetFrameworks>$(TfmGroupDotNetWindows)</TargetFrameworks>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Description>API for War3Net.Runtime.Core, similar to War3Api.Common.</Description>
+    <PackageTags>api;common;modding;warcraft3;wc3</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(PUBLISH)'!='true'">
+    <ProjectReference Include="..\War3Net.Runtime.Core\War3Net.Runtime.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(PUBLISH)'=='true'">
+    <PackageReference Include="War3Net.Runtime.Core" />
+  </ItemGroup>
+
+</Project>

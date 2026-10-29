@@ -1,0 +1,20 @@
+﻿namespace War3Net.Build.Info
+{
+    public sealed partial class ForceData
+    {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ForceData"/> class.
+        /// </summary>
+        public ForceData()
+        {
+        }
+
+        public ForceFlags Flags { get; set; }
+
+        public Bitmask32 Players { get; set; }
+
+        public string Name { get; set; }
+
+        public override string ToString() => Name;
+    }
+}

@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(TfmGroupDotNet)</TargetFrameworks>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Description>Generate map scripts and MPQ archives from C#/vJass source code.</Description>
+    <PackageTags>jass;map;modding;mpq;vjass;warcraft3;wc3</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(PUBLISH)'!='true'">
+    <ProjectReference Include="..\War3Net.Build.Core\War3Net.Build.Core.csproj" />
+    <ProjectReference Include="..\War3Net.CodeAnalysis.Transpilers\War3Net.CodeAnalysis.Transpilers.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(PUBLISH)'=='true'">
+    <PackageReference Include="War3Net.Build.Core" />
+    <PackageReference Include="War3Net.CodeAnalysis.Transpilers" />
+  </ItemGroup>
+
+</Project>

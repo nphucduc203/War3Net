@@ -1,0 +1,55 @@
+﻿namespace War3Net.CodeAnalysis.VJass.Syntax
+{
+    public class VJassReturnClauseSyntax : VJassSyntaxNode
+    {
+        internal VJassReturnClauseSyntax(
+            VJassSyntaxToken returnsToken,
+            VJassTypeSyntax returnType)
+        {
+            ReturnsToken = returnsToken;
+            ReturnType = returnType;
+        }
+
+        public VJassSyntaxToken ReturnsToken { get; }
+
+        public VJassTypeSyntax ReturnType { get; }
+
+        public override bool IsEquivalentTo([NotNullWhen(true)] VJassSyntaxNode? other)
+        {
+            return other is VJassReturnClauseSyntax returnClause
+                && ReturnType.IsEquivalentTo(returnClause.ReturnType);
+        }
+
+        public override void WriteTo(TextWriter writer)
+        {
+            ReturnsToken.WriteTo(writer);
+            ReturnType.WriteTo(writer);
+        }
+
+        public override void ProcessTo(TextWriter writer, VJassPreprocessorContext context)
+        {
+            ReturnsToken.ProcessTo(writer, context);
+            ReturnType.ProcessTo(writer, context);
+        }
+
+        public override string ToString() => $"{ReturnsToken} {ReturnType}";
+
+        public override VJassSyntaxToken GetFirstToken() => ReturnsToken;
+
+        public override VJassSyntaxToken GetLastToken() => ReturnType.GetLastToken();
+
+        protected internal override VJassReturnClauseSyntax ReplaceFirstToken(VJassSyntaxToken newToken)
+        {
+            return new VJassReturnClauseSyntax(
+                newToken,
+                ReturnType);
+        }
+
+        protected internal override VJassReturnClauseSyntax ReplaceLastToken(VJassSyntaxToken newToken)
+        {
+            return new VJassReturnClauseSyntax(
+                ReturnsToken,
+                ReturnType.ReplaceLastToken(newToken));
+        }
+    }
+}
