@@ -1,6 +1,7 @@
 using System.Numerics;
 using War3Engine.Assets;
 using War3Engine.Core;
+using War3Engine.Compat;
 using War3Engine.Core.Models;
 using War3Net.Common.Extensions;
 
@@ -33,6 +34,8 @@ internal static class Program
                     return InspectMap(store, args.ElementAtOrDefault(1) ?? settings.MapPath);
                 case "mapdata":
                     return InspectMapData(args.ElementAtOrDefault(1) ?? settings.MapPath);
+                case "compat":
+                    return InspectCompatibility(settings, store, args.ElementAtOrDefault(1), args.ElementAtOrDefault(2));
                 case "extract":
                     if (File.Exists(settings.MapPath))
                     {
@@ -44,6 +47,8 @@ internal static class Program
                     return InspectPose(store, args[1], args[2], float.Parse(args[3], System.Globalization.CultureInfo.InvariantCulture));
                 case "slk":
                     return InspectSlk(store, args[1], args.ElementAtOrDefault(2) ?? "");
+                case "mpq":
+                    return InspectMpq(args[1], args.ElementAtOrDefault(2), args.ElementAtOrDefault(3));
                 default:
                     PrintUsage();
                     return 1;
@@ -59,6 +64,155 @@ internal static class Program
 
             return 1;
         }
+    }
+
+    private static int InspectCompatibility(EngineSettings settings, AssetStore store, string? mapPath, string? outputPath)
+    {
+        var target = mapPath
+                     ?? (string.IsNullOrWhiteSpace(settings.YdweMapPath) ? settings.MapPath : settings.YdweMapPath);
+        if (!File.Exists(target))
+        {
+            Console.WriteLine($"map not found: {target}");
+            return 1;
+        }
+
+        store.MountMap(target);
+        string script = string.Empty;
+        var language = "none";
+        if (store.TryOpen("war3map.j", out var jassStream))
+        {
+            using (jassStream)
+            using (var reader = new StreamReader(jassStream, System.Text.Encoding.UTF8, true))
+            {
+                script = reader.ReadToEnd();
+            }
+
+            language = "jass";
+        }
+        else if (store.TryOpen("war3map.lua", out var luaStream))
+        {
+            using (luaStream)
+            using (var reader = new StreamReader(luaStream, System.Text.Encoding.UTF8, true))
+            {
+                script = reader.ReadToEnd();
+            }
+
+            language = "lua";
+        }
+
+        var inventory = JassScriptInventory.Parse(script);
+        if (language == "lua")
+        {
+            Console.WriteLine("lua scripts are inventoried only; JASS native scanning skipped");
+        }
+
+        var components = YdweInstallation.Detect(settings.WarcraftPath);
+        var imports = ReadMapImports(store);
+        var enabledProfiles = settings.EnableYdweCompat
+            ? CompatibilityProfiles.All.Where(p => !p.IsDefault).Select(p => p.Id).ToArray()
+            : Array.Empty<string>();
+
+        var report = new MapDependencyReport
+        {
+            MapPath = target,
+            MapBytes = new FileInfo(target).Length,
+            GameVersion = YdweInstallation.GameVersion(settings.WarcraftPath),
+            EnabledProfiles = enabledProfiles,
+            Script = inventory,
+            Components = components,
+            Imports = imports,
+        };
+
+        var text = report.ToText();
+        Console.Write(text);
+        if (!string.IsNullOrWhiteSpace(outputPath))
+        {
+            File.WriteAllText(outputPath, text);
+            Console.WriteLine($"report written: {outputPath}");
+        }
+
+        return 0;
+    }
+
+    private static List<MapImportStatus> ReadMapImports(AssetStore store)
+    {
+        var result = new List<MapImportStatus>();
+        if (!store.TryOpen("war3map.imp", out var stream))
+        {
+            return result;
+        }
+
+        using (stream)
+        using (var reader = new BinaryReader(stream, System.Text.Encoding.UTF8, true))
+        {
+            reader.ReadInt32();
+            var count = reader.ReadInt32();
+            for (var i = 0; i < count; i++)
+            {
+                reader.ReadByte();
+                var path = ReadNullTerminatedString(reader);
+                if (path.Length == 0)
+                {
+                    continue;
+                }
+
+                var extension = Path.GetExtension(path).ToLowerInvariant();
+                result.Add(new MapImportStatus(path, store.Exists(path), extension));
+            }
+        }
+
+        return result;
+    }
+
+    private static string ReadNullTerminatedString(BinaryReader reader)
+    {
+        var bytes = new List<byte>();
+        while (true)
+        {
+            var value = reader.ReadByte();
+            if (value == 0)
+            {
+                break;
+            }
+
+            bytes.Add(value);
+        }
+
+        return System.Text.Encoding.UTF8.GetString(bytes.ToArray());
+    }
+
+    private static int InspectMpq(string archivePath, string? file, string? output)
+    {
+        using var archive = War3Net.IO.Mpq.MpqArchive.Open(archivePath, loadListFile: true);
+        if (file is null)
+        {
+            Console.WriteLine($"archive: {archivePath} entries={archive.Count}");
+            var names = archive.Select(e => e.FileName).Where(n => !string.IsNullOrEmpty(n)).OrderBy(n => n).ToList();
+            Console.WriteLine("names: " + names.Count);
+            foreach (var name in names.Where(n => n!.Contains("Water", StringComparison.OrdinalIgnoreCase) || n!.EndsWith(".slk", StringComparison.OrdinalIgnoreCase)).Take(30))
+            {
+                Console.WriteLine("  " + name);
+            }
+
+            return 0;
+        }
+
+        using var stream = archive.OpenFile(file);
+        using var memory = new MemoryStream();
+        stream.CopyTo(memory);
+        var bytes = memory.ToArray();
+        if (output is not null)
+        {
+            File.WriteAllBytes(output, bytes);
+            Console.WriteLine($"{file}: {bytes.Length} bytes -> {output}");
+        }
+        else
+        {
+            Console.WriteLine($"{file}: {bytes.Length} bytes");
+            Console.WriteLine(System.Text.Encoding.UTF8.GetString(bytes, 0, Math.Min(bytes.Length, 2000)));
+        }
+
+        return 0;
     }
 
     private static int InspectSlk(AssetStore store, string path, string filter)
@@ -364,6 +518,35 @@ internal static class Program
         }
 
         Console.WriteLine($"cameras: {map.Cameras?.Cameras.Count ?? 0} regions: {map.Regions?.Regions.Count ?? 0}");
+        var unitsData = map.UnitObjectData;
+        Console.WriteLine($"unit object data: base={unitsData?.BaseUnits.Count ?? 0} new={unitsData?.NewUnits.Count ?? 0}");
+        if (unitsData is not null)
+        {
+            foreach (var mod in unitsData.NewUnits.Where(m => m.Modifications.Any(x => x.Id.ToRawcode().Contains("fi") || x.Id.ToRawcode().Contains("mdl") || x.Id.ToRawcode().Contains("mod"))).Take(5))
+            {
+                Console.WriteLine($"  MODEL {mod.NewId.ToRawcode()} <- {mod.OldId.ToRawcode()} [{string.Join(",", mod.Modifications.Where(x => x.Id.ToRawcode().Contains("fi") || x.Id.ToRawcode().Contains("mdl") || x.Id.ToRawcode().Contains("mod")).Select(m => m.Id.ToRawcode() + "=" + m.Value))}]");
+            }
+
+            foreach (var mod in unitsData.NewUnits.Take(3))
+            {
+                Console.WriteLine($"  {mod.NewId.ToRawcode()} <- {mod.OldId.ToRawcode()} mods={mod.Modifications.Count} [{string.Join(",", mod.Modifications.Take(8).Select(m => m.Id.ToRawcode() + "=" + m.Value))}]");
+            }
+
+            foreach (var mod in unitsData.BaseUnits.Take(2))
+            {
+                Console.WriteLine($"  base {mod.OldId.ToRawcode()} mods={mod.Modifications.Count} [{string.Join(",", mod.Modifications.Take(6).Select(m => m.Id.ToRawcode() + "=" + m.Value))}]");
+            }
+        }
+
+        var doodadData = map.DoodadObjectData;
+        Console.WriteLine($"doodad object data: base={doodadData?.BaseDoodads.Count ?? 0} new={doodadData?.NewDoodads.Count ?? 0}");
+        if (doodadData is not null)
+        {
+            foreach (var mod in doodadData.NewDoodads.Take(3))
+            {
+                Console.WriteLine($"  {mod.NewId.ToRawcode()} <- {mod.OldId.ToRawcode()} mods={mod.Modifications.Count} [{string.Join(",", mod.Modifications.Take(8).Select(m => m.Id.ToRawcode() + "=" + m.Value))}]");
+            }
+        }
         return 0;
     }
 

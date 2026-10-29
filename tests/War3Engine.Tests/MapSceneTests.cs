@@ -46,12 +46,14 @@ public class MapSceneTests
 
         // Fixture map is 64x96 tiles with a 65x97 vertex grid.
         Assert.Equal(64 * 96, terrain.TileCount);
-        Assert.Equal(64 * 96 * 6, terrain.Positions.Length);
-        Assert.Equal(64 * 96 * 2, terrain.Indices.Length / 3);
-        Assert.Equal(7, terrain.TextureGroups.Length);
+        Assert.Equal(0, terrain.Positions.Length % 6);
+        Assert.Equal(7, terrain.TextureGroups.Count(g => g.Layer == 0));
+        Assert.True(terrain.TextureGroups.Length >= 7, "splat layers missing");
 
-        var texturedTiles = terrain.TextureGroups.Sum(g => g.IndexCount / 6);
-        Assert.Equal(terrain.TileCount, texturedTiles);
+        var baseTiles = terrain.TextureGroups.Where(g => g.Layer == 0).Sum(g => g.IndexCount / 6);
+        Assert.Equal(terrain.TileCount, baseTiles);
+        var baseTriangles = baseTiles * 2;
+        Assert.True(terrain.Indices.Length / 3 > baseTriangles, "expected blended splat layers");
 
         foreach (var group in terrain.TextureGroups)
         {
@@ -75,7 +77,7 @@ public class MapSceneTests
         var scene = loaded.Value.Scene;
 
         Assert.Equal(54, scene.TotalDoodads);
-        Assert.Equal(13, scene.Placements.Length);
+        Assert.True(scene.Placements.Length == 13, $"placements={scene.Placements.Length} unresolved={scene.UnresolvedModels} map={EngineSettings.Load().MapPath} types={string.Join(",", scene.Placements.Select(p => p.TypeId))}");
         Assert.True(scene.UnresolvedModels <= 1, $"unexpected unresolved doodads: {scene.UnresolvedModels}");
 
         var tree = scene.Placements.First(p => p.TypeId == "ATtr");

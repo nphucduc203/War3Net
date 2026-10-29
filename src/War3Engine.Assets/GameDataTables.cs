@@ -21,17 +21,23 @@ public sealed class GameDataTables
     private readonly SylkTable _doodads;
     private readonly SylkTable _destructables;
     private readonly SylkTable _terrain;
+    private readonly SylkTable _water;
     private readonly Dictionary<int, int> _unitRows;
     private readonly Dictionary<int, int> _doodadRows;
     private readonly Dictionary<int, int> _destructableRows;
     private readonly Dictionary<int, int> _terrainRows;
+    private readonly Dictionary<string, int> _waterRows;
+    private readonly Dictionary<string, int> _waterCols;
     private readonly Dictionary<string, int> _unitCols;
     private readonly Dictionary<string, int> _doodadCols;
     private readonly Dictionary<string, int> _destructableCols;
     private readonly Dictionary<string, int> _terrainCols;
 
-    private GameDataTables(SylkTable units, SylkTable doodads, SylkTable destructables, SylkTable terrain)
+    private GameDataTables(SylkTable units, SylkTable doodads, SylkTable destructables, SylkTable terrain, SylkTable water)
     {
+        _water = water;
+        _waterCols = ColumnMap(water);
+        _waterRows = StringRowMap(water, _waterCols["waterID"]);
         _units = units;
         _doodads = doodads;
         _destructables = destructables;
@@ -52,7 +58,8 @@ public sealed class GameDataTables
             LoadTable(store, @"Units\UnitUI.slk"),
             LoadTable(store, @"Doodads\Doodads.slk"),
             LoadTable(store, @"Units\DestructableData.slk"),
-            LoadTable(store, @"TerrainArt\Terrain.slk"));
+            LoadTable(store, @"TerrainArt\Terrain.slk"),
+            LoadTable(store, @"TerrainArt\Water.slk"));
     }
 
     public UnitArt? FindUnit(int typeId)
@@ -145,6 +152,35 @@ public sealed class GameDataTables
             if (!string.IsNullOrEmpty(name))
             {
                 map[name] = column;
+            }
+        }
+
+        return map;
+    }
+
+    /// <summary>Water style id is four characters, e.g. "YSha" for the Cityscape tileset.</summary>
+    public (float HeightTiles, string TextureBase)? FindWater(string tileset)
+    {
+        var id = tileset + "Sha";
+        if (!_waterRows.TryGetValue(id, out var row))
+        {
+            return null;
+        }
+
+        var height = GetFloat(_water, _waterCols, "height", row, 0f);
+        var tex = GetString(_water, _waterCols, "texFile", row);
+        return (height, string.IsNullOrWhiteSpace(tex) || tex == "-" ? @"ReplaceableTextures\Water\Water" : tex);
+    }
+
+    private static Dictionary<string, int> StringRowMap(SylkTable table, int idColumn)
+    {
+        var map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        for (var row = 1; row <= table.Rows; row++)
+        {
+            var id = Convert.ToString(table[idColumn, row]);
+            if (!string.IsNullOrEmpty(id))
+            {
+                map[id] = row;
             }
         }
 

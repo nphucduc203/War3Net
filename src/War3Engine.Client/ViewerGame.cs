@@ -27,6 +27,9 @@ public sealed class ViewerGame : Game
     private readonly List<(RenderModel Model, ModelInstance Instance)> _mapInstances = new();
     private readonly List<RenderModel> _ownedModels = new();
     private readonly List<Texture2D> _standaloneTextures = new();
+    private UiOverlay? _overlay;
+    private KeyboardState _previousKeyboard;
+    private readonly List<string> _mapUiLines = new();
     private MouseState _previousMouse;
     private bool _paused;
     private bool _finished;
@@ -51,6 +54,8 @@ public sealed class ViewerGame : Game
 
     protected override void LoadContent()
     {
+        _overlay = new UiOverlay(GraphicsDevice, Content.Load<SpriteFont>("UI"));
+        _previousKeyboard = Keyboard.GetState();
         var settings = EngineSettings.Load();
         _store = new AssetStore(settings.WarcraftPath);
         if (!string.IsNullOrEmpty(_options.Map))
@@ -135,7 +140,7 @@ public sealed class ViewerGame : Game
 
     private void LoadMap(AssetStore store, string mapPath)
     {
-        _scene = MapSceneLoader.Load(store, mapPath);
+        _scene = MapSceneLoader.Load(store, mapPath, _options.MaxInstances);
         Console.WriteLine($"Map: {_scene.MapName}");
         Console.WriteLine($"  tileset={_scene.Tileset} terrainTiles={_scene.Terrain.TileCount} terrainTris={_scene.Terrain.Indices.Length / 3} textureGroups={_scene.Terrain.TextureGroups.Length}");
         Console.WriteLine($"  doodads={_scene.TotalDoodads} units={_scene.TotalUnits} placements={_scene.Placements.Length} unresolvedModels={_scene.UnresolvedModels}");
@@ -146,8 +151,8 @@ public sealed class ViewerGame : Game
 
         var effect = Content.Load<Effect>("Shaders/Model");
         _renderer = new ModelRenderer(GraphicsDevice, effect);
-        _terrain = new TerrainRenderer(GraphicsDevice, effect, _scene.Terrain, LoadTextureByPath);
-        Console.WriteLine($"  terrain missing textures: {_terrain.MissingTextures}");
+        _terrain = new TerrainRenderer(GraphicsDevice, effect, _scene.Terrain, _scene.Water, LoadTextureByPath);
+        Console.WriteLine($"  terrain missing textures: {_terrain.MissingTextures} waterTris={_terrain.WaterTriangleCount}");
 
         var cache = new Dictionary<string, RenderModel>(StringComparer.OrdinalIgnoreCase);
         foreach (var placement in _scene.Placements)
@@ -155,14 +160,22 @@ public sealed class ViewerGame : Game
             var cacheKey = placement.ModelPath + "|" + placement.ReplaceableTexture;
             if (!cache.TryGetValue(cacheKey, out var renderModel))
             {
-                var data = MdxModelLoader.Load(store, placement.ModelPath);
-                renderModel = new RenderModel(GraphicsDevice, data, texture =>
-                    texture.ReplaceableId == placement.ReplaceableId && placement.ReplaceableTexture is not null
-                        ? LoadTextureByPath(placement.ReplaceableTexture)
-                        : LoadTexture(texture));
-                cache[cacheKey] = renderModel;
-                _ownedModels.Add(renderModel);
-                Console.WriteLine($"  model {placement.ModelPath}: geosets={data.Geosets.Length} nodes={data.Nodes.Length} unresolvedTextures={renderModel.UnresolvedTextures.Count}");
+                try
+                {
+                    var data = MdxModelLoader.Load(store, placement.ModelPath);
+                    renderModel = new RenderModel(GraphicsDevice, data, texture =>
+                        texture.ReplaceableId == placement.ReplaceableId && placement.ReplaceableTexture is not null
+                            ? LoadTextureByPath(placement.ReplaceableTexture)
+                            : LoadTexture(texture));
+                    cache[cacheKey] = renderModel;
+                    _ownedModels.Add(renderModel);
+                    Console.WriteLine($"  model {placement.ModelPath}: geosets={data.Geosets.Length} nodes={data.Nodes.Length} unresolvedTextures={renderModel.UnresolvedTextures.Count}");
+                }
+                catch (Exception ex) when (ex is InvalidDataException or NotSupportedException)
+                {
+                    Console.WriteLine($"  model {placement.ModelPath} SKIPPED: {ex.Message}");
+                    continue;
+                }
             }
 
             var instance = new ModelInstance(renderModel.Data)
@@ -181,6 +194,10 @@ public sealed class ViewerGame : Game
         }
 
         Console.WriteLine($"  rendered instances: {_mapInstances.Count} (unique models {cache.Count})");
+        _mapUiLines.Add($"tileset {_scene.Tileset}  tiles {_scene.Terrain.TileCount}  tris {_scene.Terrain.Indices.Length / 3}");
+        _mapUiLines.Add($"doodads {_scene.TotalDoodads}  units {_scene.TotalUnits}  visible {_mapInstances.Count}/{_scene.Placements.Length}");
+        _mapUiLines.Add($"unique models {cache.Count}  unresolved {_scene.UnresolvedModels}  missing textures {_terrain.MissingTextures}");
+        _mapUiLines.Add($"terrain textures {_scene.Terrain.TextureGroups.Length}  water tris {_terrain.WaterTriangleCount}");
 
         var bounds = _scene.Bounds;
         var center = _options.Target is { } target ? War3Engine.Core.Wc3Space.Position(target) : bounds.Center;
@@ -216,6 +233,7 @@ public sealed class ViewerGame : Game
 
     protected override void UnloadContent()
     {
+        _overlay?.Dispose();
         _terrain?.Dispose();
         foreach (var model in _ownedModels)
         {
@@ -253,13 +271,33 @@ public sealed class ViewerGame : Game
 
         _previousMouse = mouse;
 
-        if (Keyboard.GetState().IsKeyDown(Keys.Space))
+        var keyboard = Keyboard.GetState();
+        if (keyboard.IsKeyDown(Keys.Space) && !_previousKeyboard.IsKeyDown(Keys.Space))
         {
-            _paused = true;
+            _paused = !_paused;
         }
-        else
+
+        if (keyboard.IsKeyDown(Keys.OemOpenBrackets) && !_previousKeyboard.IsKeyDown(Keys.OemOpenBrackets))
         {
-            _paused = false;
+            CycleAnimation(-1);
+        }
+
+        if (keyboard.IsKeyDown(Keys.OemCloseBrackets) && !_previousKeyboard.IsKeyDown(Keys.OemCloseBrackets))
+        {
+            CycleAnimation(1);
+        }
+
+        _previousKeyboard = keyboard;
+
+        if (_overlay is not null)
+        {
+            var selection = _overlay.PendingAnimationSelection;
+            _overlay.ClearSelection();
+            if (selection is { } index && _instance is { } selected)
+            {
+                selected.SequenceIndex = index;
+                selected.SequenceTimeMs = 0;
+            }
         }
 
         if (!_paused && _options.Screenshot is null)
@@ -306,6 +344,7 @@ public sealed class ViewerGame : Game
 
         GraphicsDevice.Clear(new Color(28, 32, 40));
         RenderScene(GraphicsDevice, null, GraphicsDevice.PresentationParameters.BackBufferWidth, GraphicsDevice.PresentationParameters.BackBufferHeight);
+        DrawUi(Mouse.GetState());
         base.Draw(gameTime);
     }
 
@@ -323,6 +362,7 @@ public sealed class ViewerGame : Game
         GraphicsDevice.SetRenderTarget(target);
         GraphicsDevice.Clear(new Color(28, 32, 40));
         RenderScene(GraphicsDevice, target, _options.Width, _options.Height);
+        DrawUi(default);
         GraphicsDevice.SetRenderTarget(null);
 
         using (var stream = File.Create(path))
@@ -331,6 +371,51 @@ public sealed class ViewerGame : Game
         }
 
         Console.WriteLine($"  screenshot: {path} ({_options.Width}x{_options.Height}) draws={_stats.DrawCalls} triangles={_stats.Triangles}");
+    }
+
+    private void CycleAnimation(int direction)
+    {
+        if (_instance is null || _instance.Model.Sequences.Length == 0)
+        {
+            return;
+        }
+
+        var count = _instance.Model.Sequences.Length;
+        _instance.SequenceIndex = ((_instance.SequenceIndex + direction) % count + count) % count;
+        _instance.SequenceTimeMs = 0;
+    }
+
+    private void DrawUi(MouseState mouse)
+    {
+        if (_overlay is null)
+        {
+            return;
+        }
+
+        if (_scene is not null)
+        {
+            _overlay.DrawMap($"Map: {_scene.MapName}", _mapUiLines);
+            return;
+        }
+
+        if (_instance is not { } instance)
+        {
+            return;
+        }
+
+        _overlay.DrawModel(
+            new UiOverlay.ModelInfo
+            {
+                Title = instance.Model.Name,
+                Subtitle = $"{instance.Model.Geosets.Length} geosets  {instance.Model.Nodes.Length} nodes  {instance.Model.Sequences.Length} sequences",
+                Animations = instance.Model.Sequences.Select(s => s.Name).ToArray(),
+                SelectedAnimation = instance.SequenceIndex,
+                TimeMs = instance.SequenceFrame,
+                Paused = _paused,
+                DrawCalls = _stats.DrawCalls,
+                Triangles = _stats.Triangles,
+            },
+            mouse);
     }
 
     private void RenderScene(GraphicsDevice device, RenderTarget2D? target, int width, int height)

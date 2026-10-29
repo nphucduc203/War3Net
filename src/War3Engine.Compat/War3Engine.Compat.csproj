@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Optional compatibility profiles (YDWE/KKWE/DzAPI) layered on the engine core.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\War3Engine.Core\War3Engine.Core.csproj" />
+  </ItemGroup>
+
+</Project>

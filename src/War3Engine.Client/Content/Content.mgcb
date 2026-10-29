@@ -16,3 +16,8 @@
 /importer:EffectImporter
 /processor:EffectProcessor
 /build:Shaders/Model.fx
+
+#begin UI.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/build:UI.spritefont

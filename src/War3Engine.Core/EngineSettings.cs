@@ -8,6 +8,10 @@ public sealed class EngineSettings
 
     public string MapPath { get; set; } = string.Empty;
 
+    public string YdweMapPath { get; set; } = string.Empty;
+
+    public bool EnableYdweCompat { get; set; }
+
     public static EngineSettings Load()
     {
         var settings = new EngineSettings();

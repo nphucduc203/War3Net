@@ -25,8 +25,11 @@ public sealed class TerrainRenderer : IDisposable
     private readonly EffectParameter _pTexture;
     private readonly EffectParameter? _pLightDirection;
     private readonly EffectParameter? _pAmbient;
+    private readonly VertexBuffer? _waterVertices;
+    private readonly IndexBuffer? _waterIndices;
+    private readonly Texture2D? _waterTexture;
 
-    public TerrainRenderer(GraphicsDevice device, Effect effect, TerrainMeshData mesh, Func<string, Texture2D?> textureLoader)
+    public TerrainRenderer(GraphicsDevice device, Effect effect, TerrainMeshData mesh, WaterMeshData? water, Func<string, Texture2D?> textureLoader)
     {
         _device = device;
         _effect = effect;
@@ -82,7 +85,32 @@ public sealed class TerrainRenderer : IDisposable
 
         TriangleCount = indices.Length / 3;
         MissingTextures = _groupTextures.Count(t => t is null);
+
+        if (water is { Positions.Length: > 0 })
+        {
+            var waterVertices = new SkinnedVertex[water.Positions.Length];
+            for (var i = 0; i < waterVertices.Length; i++)
+            {
+                waterVertices[i] = new SkinnedVertex
+                {
+                    Position = water.Positions[i],
+                    Normal = Vector3.UnitY,
+                    Uv0 = water.Uvs[i],
+                    Uv1 = water.Uvs[i],
+                    BoneWeights = new Vector4(1f, 0f, 0f, 0f),
+                };
+            }
+
+            _waterVertices = new VertexBuffer(device, SkinnedVertex.Declaration, waterVertices.Length, BufferUsage.WriteOnly);
+            _waterVertices.SetData(waterVertices);
+            _waterIndices = new IndexBuffer(device, IndexElementSize.ThirtyTwoBits, water.Indices.Length, BufferUsage.WriteOnly);
+            _waterIndices.SetData(water.Indices);
+            _waterTexture = textureLoader(water.TexturePath);
+            WaterTriangleCount = water.Indices.Length / 3;
+        }
     }
+
+    public int WaterTriangleCount { get; }
 
     public int TriangleCount { get; }
 
@@ -116,6 +144,8 @@ public sealed class TerrainRenderer : IDisposable
                 continue;
             }
 
+            _device.BlendState = _groups[i].Blended ? RenderStates.AlphaBlend : BlendState.Opaque;
+            _device.DepthStencilState = _groups[i].Blended ? RenderStates.DepthReadOnly : RenderStates.DepthWrite;
             _pTexture.SetValue(texture);
             _effect.CurrentTechnique.Passes[0].Apply();
             // 4-arg overload: (type, baseVertex, startIndex, primitiveCount).
@@ -126,6 +156,19 @@ public sealed class TerrainRenderer : IDisposable
                 _groups[i].IndexCount / 3);
         }
 
+        if (_waterVertices is not null && _waterIndices is not null && _waterTexture is not null)
+        {
+            _pLayerColor.SetValue(new Microsoft.Xna.Framework.Vector4(0.55f, 0.75f, 1f, 0.55f));
+            _pUnshaded.SetValue(true);
+            _pTexture.SetValue(_waterTexture);
+            _device.BlendState = RenderStates.AlphaBlend;
+            _device.DepthStencilState = RenderStates.DepthReadOnly;
+            _device.SetVertexBuffer(_waterVertices);
+            _device.Indices = _waterIndices;
+            _effect.CurrentTechnique.Passes[0].Apply();
+            _device.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, WaterTriangleCount);
+        }
+
         _device.RasterizerState = RasterizerState.CullCounterClockwise;
     }
 
@@ -133,6 +176,8 @@ public sealed class TerrainRenderer : IDisposable
     {
         _vertices.Dispose();
         _indices.Dispose();
+        _waterVertices?.Dispose();
+        _waterIndices?.Dispose();
     }
 
     private static Microsoft.Xna.Framework.Matrix ToXna(Matrix4x4 m) => new(

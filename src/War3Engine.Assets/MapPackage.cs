@@ -15,6 +15,8 @@ public sealed class MapPackage
 
     public string Path { get; }
 
+    public List<string> Diagnostics { get; } = new();
+
     /// <summary>W3X files place a 512-byte HM3W header before the MPQ archive.</summary>
     public static MapPackage Load(string path)
     {
@@ -24,8 +26,28 @@ public sealed class MapPackage
             bytes = bytes[512..];
         }
 
-        using var stream = new MemoryStream(bytes, writable: false);
-        var map = Map.Open(stream, MapFiles.All);
-        return new MapPackage(map, path);
+        // YDWE maps can carry non-standard values (e.g. weather id "0000") that strict
+        // enum parsing rejects. Retry without the offending sections instead of failing the map.
+        var package = new MapPackage(null!, path);
+        foreach (var files in new[] { MapFiles.All, MapFiles.All & ~MapFiles.Info, MapFiles.Environment | MapFiles.Doodads | MapFiles.Units | MapFiles.PathingMap | MapFiles.ImportedFiles | MapFiles.UnitObjectData | MapFiles.DoodadObjectData | MapFiles.DestructableObjectData })
+        {
+            try
+            {
+                using var stream = new MemoryStream(bytes, writable: false);
+                package = new MapPackage(Map.Open(stream, files), path);
+                if (files != MapFiles.All)
+                {
+                    package.Diagnostics.Add($"map parsed with reduced sections ({files})");
+                }
+
+                return package;
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                package.Diagnostics.Add($"section set {files} failed: {ex.Message}");
+            }
+        }
+
+        throw new InvalidDataException($"could not parse map {path}: {string.Join("; ", package.Diagnostics)}");
     }
 }

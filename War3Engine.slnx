@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/War3Engine.Assets/War3Engine.Assets.csproj" />
     <Project Path="src/War3Engine.Client/War3Engine.Client.csproj" />
+    <Project Path="src/War3Engine.Compat/War3Engine.Compat.csproj" />
     <Project Path="src/War3Engine.Core/War3Engine.Core.csproj" />
     <Project Path="src/War3Engine.Inspector/War3Engine.Inspector.csproj" />
     <Project Path="src/War3Engine.Rendering/War3Engine.Rendering.csproj" />

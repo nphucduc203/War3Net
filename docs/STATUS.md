@@ -1,7 +1,17 @@
 # Project status (2026-10-29)
 
-Target baseline: WC3 TFT 1.27d MPQ install at `D:/Games/Warcraft 3.2`; fixture map
-`C:/Users/admin/Downloads/Map Tong Hop v49.0 SS2.w3x` (protected, no JASS/Lua script).
+Target baseline: Warcraft III **1.27.0.52240** MPQ install at `D:/Games/Warcraft 3.2`
+(not 1.27d). Maps:
+- `C:/Users/admin/Downloads/Map Tong Hop v49.0 SS2.w3x` - standard-ish fixture, protected (no script).
+- `C:/Users/admin/Downloads/811.ThoiDaiBS.w3x` - YDWE map with JASS and 265 extension natives.
+
+Backup remote: `https://github.com/nphucduc203/War3Net` (branch `main`). The working tree
+uses the user's `GITHUB_TOKEN` only through a per-command credential helper; no token is
+stored in the repository or git config.
+
+.NET/VS: SDK 10.0.401 + Visual Studio 2026 18.10. The "targeting a version of .NET which
+is not installed" warning came from vendored War3Net projects multi-targeting net6.0
+(no .NET 6 runtime). They are now .NET 10-only and `global.json` pins the SDK.
 
 ## Verified working
 
@@ -23,17 +33,39 @@ Target baseline: WC3 TFT 1.27d MPQ install at `D:/Games/Warcraft 3.2`; fixture m
   tiers from W3E (worldZ = w3eHeight + layer*128 - 256).
 - Doodads: 54 placements -> 13 visible models (pathing blockers skipped), including
   destructible trees with per-destructible replaceable textures, waterfall, cauldron.
+- Terrain now uses WC3-style per-layer splat masks (corner-mask atlas cells), tier cliff
+  walls (approximate, real cliff models pending), and water surfaces from W3E water levels
+  plus `TerrainArt/Water.slk` per-tileset height (-0.7 cityscape / -0.6 ashenvale).
+- Doodad/unit art honors `war3map.w3u/w3b/w3d` model overrides (`umdl`/`dfil`).
 - Evidence: `artifacts/map_overview_final.png`, `artifacts/map_ground_final.png`,
-  `artifacts/interactive_window.png` (windowed client running the map).
+  `artifacts/map_water2.png` (splat + water + tier walls), `artifacts/interactive_window.png`.
+
+### YDWE fixture - static render + compatibility report
+- `811.ThoiDaiBS.w3x` opens (MapInfo skipped due to an invalid weather id "0000"); 128x128
+  terrain, 16,384 tiles, 48k+ triangles with splat layers, 1,091 doodads / 26 units,
+  250 rendered instances (64 unique models), 139 unresolved custom objects.
+- `War3Engine.Inspector compat` reports: 1.27.0.52240, YDWEConfig 2.0.0.2485, DzAPI
+  dz_w3_plugin.dll, 25 YDWE libraries, 265 extension natives (229 DzAPI, 31 JAPI,
+  5 Extra; 69 actually called), 2,024 imports with 1 missing.
+- Evidence: `artifacts/ydwe_map_final.png`; details in `docs/YDWE_COMPATIBILITY.md`.
+
+### UI + tooling
+- In-app overlay: title/stats, clickable animation list, paused/time state, controls help;
+  map mode shows tileset, counts and water/cliff stats. Rendered into screenshots.
+- `War3Engine.Inspector` commands now include `compat` and `mpq` (nested archive probe).
+- Tests: 32 passing (adds YDWE inventory, classification, component detection).
 
 ## Partially working / next
 
-- Terrain fidelity: ground is one atlas cell per tile; WC3 splat blending, cliff
-  models/ramps and water surfaces are not rendered yet (gaps documented).
+- Terrain: splat masks are rendered per tile (orientation approximate), cliffs are
+  simplified walls rather than WC3 cliff models/ramps, water has no shore blending,
+  depth coloring or animation.
 - Model runtime: billboard nodes, texture UV animation, ParticleEmitter(2), ribbons,
   global blended-layer sort by priority plane.
-- Fixture map has no script (protected); JASS execution needs another fixture.
-- Simulation, UI, audio, fog, networking: not started.
+- YDWE: only dependency inventory + togglable provider classification; native functions
+  are not implemented and no JASS VM exists, so the YDWE map does not execute yet.
+- Text `.mdl` models are unsupported; custom object art resolves `.mdl` names to `.mdx`.
+- Simulation, audio, fog, campaign, networking: not started.
 
 ## Commands
 

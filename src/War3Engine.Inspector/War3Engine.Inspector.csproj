@@ -10,6 +10,7 @@
   <ItemGroup>
     <ProjectReference Include="..\War3Engine.Core\War3Engine.Core.csproj" />
     <ProjectReference Include="..\War3Engine.Assets\War3Engine.Assets.csproj" />
+    <ProjectReference Include="..\War3Engine.Compat\War3Engine.Compat.csproj" />
   </ItemGroup>
 
 </Project>

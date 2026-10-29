@@ -1,6 +1,6 @@
 # Support matrix
 
-Target baseline: Warcraft III: The Frozen Throne 1.27d, MPQ era (`D:/Games/Warcraft 3.2`).
+Target baseline: Warcraft III 1.27.0.52240 (TFT, MPQ era) at `D:/Games/Warcraft 3.2`.
 Fixture map: `C:/Users/admin/Downloads/Map Tong Hop v49.0 SS2.w3x` (HM3W, protected).
 
 | Capability | Status | Evidence |
@@ -24,13 +24,20 @@ Fixture map: `C:/Users/admin/Downloads/Map Tong Hop v49.0 SS2.w3x` (HM3W, protec
 | ParticleEmitter2 | Parsed by War3Net, not simulated | — |
 | Ribbons | Parsed by War3Net, not simulated | — |
 | W3E parse (dimensions, heights, tiles, layers) | Working | 64x96 tiles, 6305 vertices, tiers -256..128 |
-| Terrain mesh + ground textures | Working (no splat blending) | 12,288 tris, 7 Cityscape textures |
-| Cliff models / ramps / water surface | Not implemented | tiers currently stretch ground quads |
+| Terrain splat layers | Working (approximate mask orientation) | 15 groups / 15,396 tris on fixture |
+| Cliff / ramp models | Approximate tier walls only | `Textures/Cliff0.blp` skirts, no WC3 cliff models |
+| Water surface | Working | W3E levels + `TerrainArt/Water.slk` height, Water00.blp |
+| Object data art overrides | Working (model paths only) | `umdl`/`dfil` from w3u/w3b/w3d |
+| In-app UI overlay | Working (screenshot-verified) | animation list, stats, map panel |
 | Doodads (incl. destructible trees) | Working | 54 placements -> 13 visible (pathing-only skipped) |
 | Destructible replaceable textures (texID/texFile) | Working | AshenTree textures resolve |
 | Units placement | Implemented, no unit in fixture | UnitUI.slk file/modelScale |
 | Model variations (File<N>.mdx) | Working | AshenTree1/4 |
 | JASS script for fixture map | Blocked | map is protected (no war3map.j/.lua) |
+| YDWE map (811.ThoiDaiBS) static load | Working | 250 instances, 64 models, 139 unresolved custom |
+| YDWE extension native inventory | Working | 265 declared / 69 called; DzAPI/JAPI/Extra |
+| YDWE native implementations / JASS VM | Not implemented | compatibility layer reports only |
+| Text MDL models | Not supported | binary MDX only |
 | CASC / Reforged | Not started | — |
 
 ## Local paths

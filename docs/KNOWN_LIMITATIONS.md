@@ -18,17 +18,31 @@
 
 ## Terrain
 
-- Ground uses one full-coverage atlas cell per tile. WC3's splat blending (masked
-  corner cells) is not implemented, so tile borders are hard and textures repeat.
-- Cliff and ramp models are not rendered; height discontinuities currently show as
-  stretched ground quads. Water tiles are parsed (WaterHeight, flags) but no water
-  surface is drawn.
+- Splat blending uses per-tile corner-mask atlas cells but the cell UV orientation is
+  approximate; transitions are smooth but corner direction is not verified against the
+  original client.
+- Cliffs are simplified vertical walls textured with `Textures/Cliff0.blp`. WC3 cliff
+  models, ramp models, cliff variation selection and cliff textures per cliff type are
+  not implemented.
+- Water uses W3E water levels plus per-tileset Water.slk height; shore blending, depth
+  color bands, water animation frames and reflections are missing.
 - Terrain lighting uses the model Lambert shader; WC3 light-environment tables are not used.
-- Doodads are drawn without distance culling/instancing; very large maps will exceed
-  the 2000-placement cap (`MapSceneLoader` parameter).
-- Pathing-only doodads (destructible category P) are skipped; no other doodad filters.
-- Object data overrides (war3map.w3u/w3b/w3d) are parsed by War3Net but not yet applied
-  to art lookup; custom unit/doodad models may resolve to defaults.
+- Doodads are drawn without distance culling/instancing; very large maps hit the
+  2000-placement cap (`MapSceneLoader` parameter).
+- Pathing-only doodads (destructible category P) are skipped.
+- Object-data overrides apply model paths only (`umdl`/`dfil`); scale, team color and
+  other widget fields are not applied. Text `.mdl` models are unsupported.
+- YDWE fixture map: MapInfo is skipped (invalid weather id "0000"), 139 of 1,091 doodads
+  resolve to no model (custom ids / text MDL).
+
+## Compatibility / UI
+
+- YDWE extension natives are inventoried and classified but not implemented; there is no
+  JASS VM yet, so the YDWE map cannot execute. Enabling the profile only registers
+  reported stubs (future runtime hook points).
+- UI overlay interaction (clicking the animation list) is implemented but only verified
+  through screenshot mode; it was not exercised with a live mouse in this session.
+- The map view has no terrain inspector UI; diagnostics stay in the CLI.
 
 ## Assets
 

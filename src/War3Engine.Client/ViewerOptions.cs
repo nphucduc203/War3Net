@@ -28,6 +28,8 @@ public sealed class ViewerOptions
 
     public System.Numerics.Vector3? Target { get; private set; }
 
+    public int MaxInstances { get; private set; } = 2000;
+
     public static ViewerOptions Parse(string[] args)
     {
         var options = new ViewerOptions();
@@ -69,6 +71,9 @@ public sealed class ViewerOptions
                     break;
                 case "--geosets":
                     options.Geosets = Next(args, ref i).Split(',').Select(int.Parse).ToHashSet();
+                    break;
+                case "--instances":
+                    options.MaxInstances = int.Parse(Next(args, ref i));
                     break;
                 case "--target":
                     var target = Next(args, ref i).Split(',');

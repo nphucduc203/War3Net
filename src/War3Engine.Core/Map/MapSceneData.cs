@@ -20,7 +20,18 @@ public sealed class TerrainMeshData
     public int TileCount { get; init; }
 }
 
-public readonly record struct TerrainTextureGroup(string TexturePath, int StartIndex, int IndexCount);
+public readonly record struct TerrainTextureGroup(string TexturePath, int StartIndex, int IndexCount, bool Blended, int Layer);
+
+public sealed class WaterMeshData
+{
+    public Vector3[] Positions { get; init; } = Array.Empty<Vector3>();
+
+    public Vector2[] Uvs { get; init; } = Array.Empty<Vector2>();
+
+    public int[] Indices { get; init; } = Array.Empty<int>();
+
+    public string TexturePath { get; init; } = string.Empty;
+}
 
 public sealed class MapPlacement
 {
@@ -41,6 +52,8 @@ public sealed class MapPlacement
 public sealed class MapSceneData
 {
     public TerrainMeshData Terrain { get; init; } = new();
+
+    public WaterMeshData? Water { get; init; }
 
     public MapPlacement[] Placements { get; init; } = Array.Empty<MapPlacement>();
 

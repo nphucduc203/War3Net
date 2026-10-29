@@ -20,14 +20,15 @@ geoset animation alpha/color, per-layer alpha tracks, texture-id tracks.
 Remaining: billboard nodes, UV texture animation, ParticleEmitter/ParticleEmitter2,
 RibbonEmitter, priority-plane render queue, team glow tinting, attachment diagnostics.
 
-## C — Static map viewer (core done, fidelity gaps)
+## C — Static map viewer (done, documented approximations)
 
-Done: W3I/W3E/DOO/Units parse; terrain mesh with 7 Cityscape textures; tiered heights;
-doodad/destructible placement with variations and destructible replaceable textures;
-map inspector (`mapdata`); screenshots of overview and ground level on the fixture map.
+Done: W3I/W3E/DOO/Units parse; layered ground splats with corner-mask atlas cells;
+tiered heights; tier cliff walls; water surfaces from W3E + Water.slk; doodad/unit
+placement with variations, destructible replaceable textures and w3u/w3b/w3d model
+overrides; YDWE fixture renders statically; map inspector and compatibility report.
 
-Remaining: WC3 ground texture splat blending, cliff/ramp models, water surfaces,
-and object-data overrides for custom maps. Tracked as the C-polish task.
+Approximations: cliff/ramp models, splat mask orientation and water shore/depth effects.
+Tracked as remaining C fidelity work.
 
 Note: the fixture map is protected — `war3map.j` / `war3map.lua` are absent while
 `war3map.wtg`/`wct` exist. Script execution for this map is therefore deferred to E
@@ -36,6 +37,11 @@ with an alternate controlled fixture.
 ## D — Interactive runtime
 
 Units, selection, orders, movement, pathing, combat over the fixed-step simulation.
+
+## UI
+
+Overlay UI added in the viewer (model animation browser, live stats, map panel).
+Next: model/map pickers, material/bone inspection panels, diagnostics list.
 
 ## E — Scripted map execution
 
